@@ -19,14 +19,16 @@
     const rows = keys.map((k) => ({ user_id: user.id, key: k, value: { v: L.store.get(k, null) }, updated_at: new Date(m[k] || Date.now()).toISOString() }));
     const { error } = await client.from('user_state').upsert(rows); if (error) { keys.forEach((k) => pending.add(k)); console.warn('sync', error.message); }
   }
+  const stable = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => ((o[key] = x[key]), o), {}) : x)); // the database may reorder object keys
+  const same = (a, b) => stable(a) === stable(b);
   async function pull() { // merge: whichever side changed most recently wins; finished lessons are combined from both
     const { data, error } = await client.from('user_state').select('key,value,updated_at'); if (error) return console.warn('sync', error.message);
     const m = meta(); let changed = false;
     const server = Object.fromEntries((data || []).map((r) => [r.key, r]));
     for (const k of SYNC_KEYS) {
       const s = server[k], local = L.store.get(k, null), lt = m[k] || 0, st = s ? Date.parse(s.updated_at) : 0;
-      if (k === 'ledger.done2' && s) { const merged = { ...(s.value.v || {}), ...(local || {}) }; if (JSON.stringify(merged) !== JSON.stringify(local)) { origSet(k, merged); changed = true; } if (JSON.stringify(merged) !== JSON.stringify(s.value.v)) pending.add(k); continue; }
-      if (s && st > lt) { if (JSON.stringify(s.value.v) !== JSON.stringify(local)) { origSet(k, s.value.v); m[k] = st; changed = true; } }
+      if (k === 'ledger.done2' && s) { const merged = { ...(s.value.v || {}), ...(local || {}) }; if (!same(merged, local)) { origSet(k, merged); changed = true; } if (!same(merged, s.value.v)) pending.add(k); continue; }
+      if (s && st > lt) { if (!same(s.value.v, local)) { origSet(k, s.value.v); m[k] = st; changed = true; } }
       else if (local != null && lt > st) pending.add(k);
     }
     setMeta(m); await push();
