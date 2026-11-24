@@ -9,6 +9,10 @@ if (GATED) { let has = false; try { has = Object.keys(localStorage).some((k) => 
   if (!has) { document.documentElement.classList.add('gate'); setTimeout(() => document.documentElement.classList.remove('gate'), 8000); } }
 
 
+// Vercel Web Analytics: counts page views and where visitors come from. No cookies, no personal data.
+window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+(() => { const s = document.createElement('script'); s.defer = true; s.src = '/_vercel/insights/script.js'; document.head.append(s); })();
+
 const L = (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
