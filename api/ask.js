@@ -47,9 +47,11 @@ async function geminiCandidates(key) {
   const names = (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace('models/', ''));
   const bad = /image|tts|audio|live|embedding|thinking|computer|robotics|native/;
   const score = (n) => { const v = parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0); return v * 10 - (/lite/.test(n) ? 3 : 0) - (/preview|exp/.test(n) ? 4 : 0); };
-  const flash = names.filter((n) => /^gemini-.*flash/.test(n) && !bad.test(n) && !/latest/.test(n)).sort((a, b) => score(b) - score(a));
-  const aliases = ['gemini-flash-latest', 'gemini-flash-lite-latest'].filter((a) => names.includes(a));
-  geminiModels = [...new Set([...aliases.slice(0, 1), ...flash.slice(0, 4), ...aliases.slice(1)])].slice(0, 5);
+  const all = names.filter((n) => /^gemini-.*flash/.test(n) && !bad.test(n) && !/latest/.test(n)).sort((a, b) => score(b) - score(a));
+  const flash = all.filter((n) => !/lite/.test(n)), lite = all.filter((n) => /lite/.test(n));
+  const has = (a) => (names.includes(a) ? [a] : []);
+  // mix full Flash and Flash-Lite: when the big model is overloaded, the lighter one usually still answers
+  geminiModels = [...new Set([...has('gemini-flash-latest'), ...has('gemini-flash-lite-latest'), flash[0], lite[0], flash[flash.length - 1], lite[1], flash[1]].filter(Boolean))].slice(0, 6);
   if (!geminiModels.length) geminiModels = ['gemini-flash-latest'];
   return geminiModels;
 }
