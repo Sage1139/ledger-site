@@ -57,7 +57,9 @@ async function geminiCandidates(key) {
 async function askGemini(key, system, messages) {
   const models = await geminiCandidates(key);
   let lastErr;
-  for (const model of models) {
+  const tries = models.length === 1 ? [models[0], models[0], models[0]] : models; // only one model? retry it with a pause
+  for (const [n, model] of tries.entries()) {
+    if (n && tries[n - 1] === model) await new Promise((r) => setTimeout(r, 1500));
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
@@ -91,6 +93,10 @@ async function askGroq(key, system, messages) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'GET' && req.query && req.query.models === '1') { // health check: which models will be tried (no secrets)
+    try { return res.status(200).json({ provider: process.env.GEMINI_API_KEY ? 'gemini' : process.env.GROQ_API_KEY ? 'groq' : 'none', models: process.env.GEMINI_API_KEY ? await geminiCandidates(process.env.GEMINI_API_KEY) : [] }); }
+    catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }); }
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0] || 'x';
   if (limited(ip)) return res.status(429).json({ error: 'Too many questions in a minute. Take a breath and try again shortly.' });
