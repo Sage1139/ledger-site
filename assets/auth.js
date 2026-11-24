@@ -7,7 +7,14 @@
   const meta = () => L.store.get('ledger.sync.meta', {}); // key -> last local change time
   const setMeta = (m) => { try { localStorage.setItem('ledger.sync.meta', JSON.stringify(m)); } catch (e) {} };
 
-  function emit() { listeners.forEach((f) => { try { f(user); } catch (e) {} }); navButton(); }
+  function emit() { listeners.forEach((f) => { try { f(user); } catch (e) {} }); navButton(); gate(); }
+  // Lessons (/learn/...) are for signed-in learners: visitors are sent to create a free account, then brought back.
+  function gate() {
+    if (!ready || !/^\/learn(\/|$)/.test(location.pathname)) return;
+    if (configured && !user) return location.replace('/account/login.html?mode=up&next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+    document.documentElement.classList.remove('gate');
+  }
+
   function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); }); }
 
   // remember when each synced setting last changed locally, and upload it shortly after (when signed in)
@@ -44,7 +51,7 @@
       const { data } = await client.auth.getSession(); user = data.session ? data.session.user : null;
       client.auth.onAuthStateChange((ev, session) => { const was = user && user.id; user = session ? session.user : null; if (user && user.id !== was) pull(); emit(); });
       ready = true; emit(); if (user) pull();
-    } catch (e) { console.warn('auth init', e); ready = true; emit(); }
+    } catch (e) { console.warn('auth init', e); configured = false; ready = true; emit(); } // if accounts can't load, never lock anyone out
   }
 
   // small account button in the floating nav
