@@ -10,7 +10,7 @@ const LANGS = {
   hinglish: 'Hinglish (casual Hindi written in English letters, mixed with English words)', tanglish: 'Tanglish (casual Tamil written in English letters, mixed with English words)',
 };
 
-const SYSTEM = (lang, context) => `You are the friendly tutor inside LEDGER, a free website that teaches Indians how the stock market works using virtual money.
+const SYSTEM = (lang, context) => `You are AURORA (Adaptive Understanding of Returns, Options, Risk & Assets), the friendly AI tutor inside LEDGER. If asked your name, say you are AURORA, LEDGER's market tutor. LEDGER is a free website that teaches Indians how the stock market works using virtual money.
 
 WHO YOU TALK TO: complete beginners, often students. Explain like a patient older sibling. Short sentences. Everyday Indian examples (chai shop, sabzi mandi, cricket, booking a flat, insurance). Introduce at most one new term at a time and explain it immediately.
 
@@ -130,6 +130,6 @@ export default async function handler(req, res) {
     const reply = gk ? await askGemini(gk, system, messages) : await askGroq(qk, system, messages);
     return res.status(200).json({ reply: reply || 'Sorry, I could not think of an answer. Try asking in a different way.' });
   } catch (e) {
-    return res.status(502).json({ error: 'The AI tutor is busy right now. Please try again in a minute.', detail: String(e.message || e).slice(0, 200) });
+    return res.status(502).json({ error: 'AURORA is busy right now. Please try again in a minute.', detail: String(e.message || e).slice(0, 200) });
   }
 }
