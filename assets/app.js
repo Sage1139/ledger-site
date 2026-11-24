@@ -1,0 +1,157 @@
+/* ===== LEDGER shared script ===== */
+const BRAND = 'LEDGER'; // change the site name here once, it updates every page
+
+const L = (() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const inr = (n, d = 0) => (n < 0 ? '-₹' : '₹') + Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const num = (n, d = 2) => Number(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (n) => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+
+  /* --- safe storage (works even when the browser blocks storage) --- */
+  const mem = {};
+  const store = {
+    get(k, def) { try { const v = localStorage.getItem(k); return v == null ? (k in mem ? mem[k] : def) : JSON.parse(v); } catch (e) { return k in mem ? mem[k] : def; } },
+    set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  /* --- nav + footer --- */
+  function chrome(active) {
+    const root = document.body.dataset.root || '';
+    const links = [
+      ['learn', root + 'learn/', 'Learn'],
+      ['sim', root + 'simulator/', 'Simulator'],
+      ['sip', root + 'learn/mutual-funds.html#sip', 'SIP Lab'],
+    ];
+    const nav = document.createElement('nav');
+    nav.className = 'nav';
+    nav.innerHTML = `<a class="logo" href="${root || './'}">${BRAND}</a>
+      <ul>${links.map(([k, h, t]) => `<li><a href="${h}" class="${k === active ? 'on' : ''}">${t}</a></li>`).join('')}</ul>
+      <div class="row"><a class="pill" href="${root}simulator/">Open simulator</a><button class="menu" aria-label="Menu">☰</button></div>`;
+    document.body.prepend(nav);
+    $('.menu', nav).onclick = () => $('ul', nav).classList.toggle('open');
+    const f = document.createElement('footer');
+    f.className = 'foot-main';
+    f.innerHTML = `${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
+    document.body.append(f);
+    document.title = document.title.replace(/LEDGER/g, BRAND);
+    $$('[data-brand]').forEach((e) => (e.textContent = BRAND));
+  }
+
+  /* --- scroll reveal + reading progress --- */
+  function motion() {
+    const io = new IntersectionObserver((es) => es.forEach((x) => x.isIntersecting && x.target.classList.add('in')), { threshold: 0.12 });
+    $$('.reveal').forEach((el) => io.observe(el));
+    const bar = $('.progress');
+    if (bar) addEventListener('scroll', () => {
+      const h = document.documentElement.scrollHeight - innerHeight;
+      bar.style.width = (h > 0 ? (scrollY / h) * 100 : 0) + '%';
+    }, { passive: true });
+  }
+
+  /* --- canvas line chart --- */
+  function line(cv, data, color, opt = {}) {
+    if (!cv) return;
+    const c = cv.getContext('2d');
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const w = (cv.width = cv.offsetWidth * dpr), h = (cv.height = cv.offsetHeight * dpr);
+    c.clearRect(0, 0, w, h);
+    const d = data.filter((v) => v != null && isFinite(v));
+    if (d.length < 2) return;
+    let mn = opt.min ?? Math.min(...d), mx = opt.max ?? Math.max(...d);
+    if (opt.zero) { mn = Math.min(mn, 0); mx = Math.max(mx, 0); }
+    const pad = h * 0.1, X = (i) => (i / (d.length - 1)) * w, Y = (v) => h - pad - ((v - mn) / (mx - mn || 1)) * (h - pad * 2);
+    if (opt.zero) { c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = dpr; c.setLineDash([4 * dpr, 4 * dpr]); c.beginPath(); c.moveTo(0, Y(0)); c.lineTo(w, Y(0)); c.stroke(); c.setLineDash([]); }
+    if (opt.mark != null) { const mxp = X(opt.mark); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = dpr; c.beginPath(); c.moveTo(mxp, 0); c.lineTo(mxp, h); c.stroke(); }
+    c.beginPath();
+    d.forEach((v, i) => (i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))));
+    c.strokeStyle = color; c.lineWidth = 3 * dpr; c.lineJoin = 'round';
+    if (opt.glow !== false) { c.shadowColor = color; c.shadowBlur = 18 * dpr; }
+    c.stroke(); c.shadowBlur = 0;
+    if (opt.fill !== false) {
+      c.lineTo(w, h); c.lineTo(0, h);
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, color + '44'); g.addColorStop(1, color + '00');
+      c.fillStyle = g; c.fill();
+    }
+    if (opt.series2) { // second line (e.g. invested amount)
+      c.beginPath(); opt.series2.forEach((v, i) => (i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))));
+      c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 2 * dpr; c.setLineDash([6 * dpr, 5 * dpr]); c.stroke(); c.setLineDash([]);
+    }
+  }
+
+  /* --- quiz engine: L.quiz('#id', [{q, o:[...], a:index, why}], 'lessonKey') --- */
+  function quiz(sel, qs, key) {
+    const el = $(sel); if (!el) return;
+    let i = 0, score = 0; const res = [];
+    el.classList.add('quiz', 'glass');
+    function draw() {
+      if (i >= qs.length) {
+        const pass = score >= Math.ceil(qs.length * 0.6);
+        el.innerHTML = `<div class="kicker">Your result</div><div class="stat ${pass ? 'up' : 'down'}">${score} / ${qs.length}</div>
+          <p class="why">${pass ? 'Lesson complete. Nicely done. This lesson is now marked done on your learning path.' : 'Not quite there yet. Scroll back through the lesson and try again, there is no penalty.'}</p>
+          <div class="foot"><button class="ghost" data-retry>Try again</button><a class="pill" href="./">Back to all lessons</a></div>`;
+        if (pass && key) { const done = store.get('ledger.done', {}); done[key] = Math.max(done[key] || 0, score / qs.length); store.set('ledger.done', done); }
+        $('[data-retry]', el).onclick = () => { i = 0; score = 0; res.length = 0; draw(); };
+        return;
+      }
+      const q = qs[i];
+      el.innerHTML = `<div class="kicker">Check yourself · ${i + 1} of ${qs.length}</div><div class="q">${q.q}</div>
+        <div class="opts">${q.o.map((o, k) => `<button class="opt" data-k="${k}">${o}</button>`).join('')}</div>
+        <div class="why"></div>
+        <div class="foot"><div class="dots">${qs.map((_, k) => `<i class="${res[k] === true ? 'ok' : res[k] === false ? 'no' : ''} ${k === i ? 'cur' : ''}"></i>`).join('')}</div><button class="pill" data-next style="visibility:hidden">Next →</button></div>`;
+      $$('.opt', el).forEach((b) => (b.onclick = () => {
+        const k = +b.dataset.k, ok = k === q.a;
+        $$('.opt', el).forEach((x) => { x.disabled = true; if (+x.dataset.k === q.a) x.classList.add('right'); });
+        if (!ok) b.classList.add('wrong'); else score++;
+        res[i] = ok;
+        $('.why', el).innerHTML = `<b class="${ok ? 'up' : 'down'}">${ok ? 'Correct.' : 'Not quite.'}</b> ${q.why}`;
+        $('[data-next]', el).style.visibility = 'visible';
+      }));
+      $('[data-next]', el).onclick = () => { i++; draw(); };
+    }
+    draw();
+  }
+
+  /* --- market data --- */
+  async function quotes(symbols, range) {
+    const root = document.body.dataset.root || '';
+    const url = root + 'api/quote?symbols=' + encodeURIComponent(symbols.join(',')) + (range ? '&range=' + range : '');
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('feed ' + r.status);
+    return r.json();
+  }
+
+  /* --- toast --- */
+  let tt;
+  function toast(msg, kind = 'ok') {
+    let t = $('.toast');
+    if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.append(t); }
+    t.className = 'toast ' + kind; t.textContent = msg;
+    requestAnimationFrame(() => t.classList.add('show'));
+    clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  /* --- seeded random walk for demos --- */
+  function walk(n, start, vol, drift = 0, seed = 7) {
+    let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    const out = [start];
+    for (let i = 1; i < n; i++) out.push(out[i - 1] * (1 + drift + (rnd() - 0.5) * vol));
+    return out;
+  }
+
+  /* --- Black-Scholes option price (educational model) --- */
+  function ncdf(x) { const t = 1 / (1 + 0.2316419 * Math.abs(x)); const d = 0.3989423 * Math.exp(-x * x / 2); const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+  function bs(S, K, T, type = 'CE', vol = 0.13, r = 0.065) {
+    if (T <= 0) return Math.max(0, type === 'CE' ? S - K : K - S);
+    const d1 = (Math.log(S / K) + (r + vol * vol / 2) * T) / (vol * Math.sqrt(T)), d2 = d1 - vol * Math.sqrt(T);
+    const price = type === 'CE' ? S * ncdf(d1) - K * Math.exp(-r * T) * ncdf(d2) : K * Math.exp(-r * T) * ncdf(-d2) - S * ncdf(-d1);
+    return Math.max(0.05, price);
+  }
+  function delta(S, K, T, type = 'CE', vol = 0.13, r = 0.065) {
+    if (T <= 0) return type === 'CE' ? (S > K ? 1 : 0) : (S < K ? -1 : 0);
+    const d1 = (Math.log(S / K) + (r + vol * vol / 2) * T) / (vol * Math.sqrt(T));
+    return type === 'CE' ? ncdf(d1) : ncdf(d1) - 1;
+  }
+
+  return { $, $$, inr, num, pct, store, chrome, motion, line, quiz, quotes, toast, walk, bs, delta };
+})();

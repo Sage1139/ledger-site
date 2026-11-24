@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mutual funds &amp; SIP — LEDGER</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>
+.pool{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:14px;align-items:center;margin-top:20px}
+.pool .box{padding:22px;border-radius:18px;border:1px solid var(--line);background:var(--bg2);text-align:center;min-height:150px}
+.dots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:10px}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--g2);opacity:0;transform:scale(0);transition:all .4s}
+.dots i.on{opacity:1;transform:none}
+.dots.st i{border-radius:3px;background:var(--g1)}
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.out div{padding:16px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.out b{display:block;font-size:22px;font-family:'JetBrains Mono',monospace;margin-top:4px}
+.types .glass{padding:26px;cursor:pointer;transition:all .3s}
+.types .glass:hover,.types .glass.on{border-color:var(--g1)}
+.types b{display:block;font-size:19px;margin-bottom:6px}.types p{color:var(--dim);font-size:14px}
+.risk{height:12px;border-radius:12px;background:linear-gradient(90deg,#00e38c,#c6e33a,#ffb340,#ff7a3a,#ff453a);position:relative;margin:28px 0 8px}
+.risk i{position:absolute;top:-8px;width:4px;height:28px;background:#fff;border-radius:3px;transition:left .5s cubic-bezier(.16,1,.3,1);box-shadow:0 0 10px #fff}
+.legend{display:flex;gap:18px;font-size:13px;color:var(--dim);margin-top:10px}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+@media(max-width:860px){.pool{grid-template-columns:1fr}.out{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-root="/">
+<div class="progress"></div>
+<div class="wrap">
+
+<header class="lesson-hero">
+  <div class="kicker">Lesson 04 · Investor</div>
+  <h1 class="big">Mutual funds<br/>&amp; <span class="grad">SIP.</span></h1>
+  <p class="lead" style="margin-top:24px">Don't have the time to research 50 companies? Neither do most people. Mutual funds let a professional do it for you, and a SIP lets you build wealth ₹500 at a time.</p>
+  <div class="meta"><span>15 min</span><span>6 interactive labs</span><span>6-question quiz</span></div>
+</header>
+
+<section class="chapter" id="what">
+  <div class="num">CHAPTER 1</div>
+  <h2 class="big reveal">Everyone chips in.<br/>A <span class="grad">pro invests.</span></h2>
+  <p class="body reveal">A <b>mutual fund</b> pools money from thousands of investors. A professional <b>fund manager</b> uses that pool to buy a basket of stocks, bonds or both. In return you get <b>units</b> of the fund, which go up and down in value with the basket.</p>
+  <p class="body reveal">Even ₹500 gets you a slice of 50 or more companies, and instant diversification. Funds are run by asset management companies (AMCs) and regulated by SEBI.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · HOW A FUND IS BUILT</div>
+    <button class="pill green" id="poolGo">Start the fund</button>
+    <div class="pool">
+      <div class="box"><b>Investors</b><div class="small" id="pInv">0 people</div><div class="dots" id="dInv"></div></div>
+      <div class="arrow" style="color:var(--dim2);font-size:22px;text-align:center">→</div>
+      <div class="box"><b>Fund manager</b><div class="small" id="pPool">₹0 pooled</div><div style="font-size:34px;margin-top:8px">👩‍💼</div></div>
+      <div class="arrow" style="color:var(--dim2);font-size:22px;text-align:center">→</div>
+      <div class="box"><b>Portfolio</b><div class="small" id="pStk">0 stocks</div><div class="dots st" id="dStk"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="nav">
+  <div class="num">CHAPTER 2</div>
+  <h2 class="big reveal">NAV: the price<br/>of one unit.</h2>
+  <p class="body reveal"><b>NAV</b> (Net Asset Value) is the value of everything the fund owns, minus its costs, divided by the number of units. Unlike a share, it updates once a day, after the market closes.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · WATCH YOUR NAV MOVE</div>
+    <div class="grid2">
+      <div>
+        <p class="small">You invested ₹10,000 when the NAV was ₹50, so you got <b style="color:var(--fg)">200 units</b>.</p>
+        <label class="sl">Market move since you invested <b id="nMv"></b></label><input type="range" id="nM" min="-40" max="80" value="20" />
+      </div>
+      <div class="out" style="grid-template-columns:1fr 1fr;margin-top:0">
+        <div><span class="small">New NAV</span><b id="nNav"></b></div>
+        <div><span class="small">Your investment now</span><b id="nVal"></b></div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:20px">A low NAV doesn't mean a fund is "cheap". ₹10,000 buys more units at NAV ₹20 than at NAV ₹200, but if both funds rise 10%, you gain exactly the same.</div>
+  </div>
+</section>
+
+<section class="chapter" id="types">
+  <div class="num">CHAPTER 3</div>
+  <h2 class="big reveal">Types of funds<br/>and their <span class="down">risk.</span></h2>
+  <p class="body reveal">Every fund carries a SEBI <b>riskometer</b> label, from Low to Very High. Tap a fund type to see where it sits.</p>
+  <div class="grid3 types">
+    <div class="glass reveal" data-risk="88"><b>Equity</b><p>Mostly shares. Best for goals more than 5 years away. Large cap, mid cap, small cap and flexi cap.</p></div>
+    <div class="glass reveal" data-risk="22"><b>Debt</b><p>Bonds and government securities. Steadier and lower returns. Good for 1–3 year goals.</p></div>
+    <div class="glass reveal" data-risk="55"><b>Hybrid</b><p>A mix of shares and bonds. A middle path for moderate risk.</p></div>
+    <div class="glass reveal" data-risk="80"><b>Index fund</b><p>Simply copies an index like the Nifty 50. No stock picking, very low costs.</p></div>
+    <div class="glass reveal" data-risk="96"><b>Small cap</b><p>Small companies. Can grow fast, can fall 50%. Only for long horizons.</p></div>
+    <div class="glass reveal" data-risk="8"><b>Liquid</b><p>Very short-term loans. A parking spot for emergency money.</p></div>
+  </div>
+  <div class="glass lab reveal"><div class="tag">RISKOMETER</div><div class="risk"><i id="riskI" style="left:50%"></i></div><div class="row small" style="justify-content:space-between"><span>Low</span><span>Moderate</span><span>High</span><span>Very High</span></div><p class="small" id="riskTxt" style="margin-top:12px;font-size:15px">Tap a fund type above.</p></div>
+</section>
+
+<section class="chapter" id="costs">
+  <div class="num">CHAPTER 4</div>
+  <h2 class="big reveal">The hidden cost:<br/><span class="grad">expense ratio.</span></h2>
+  <p class="body reveal">Funds charge a yearly fee called the <b>expense ratio</b>, taken quietly out of the NAV. Every fund comes in two plans: <b>Direct</b> (you buy straight from the AMC, lower fee) and <b>Regular</b> (through a distributor who earns commission, higher fee). The gap looks tiny, but over decades it's huge.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · WHAT 1% COSTS YOU</div>
+    <div class="grid2">
+      <div>
+        <label class="sl">Monthly investment <b id="eAv"></b></label><input type="range" id="eA" min="1000" max="50000" step="500" value="10000" />
+        <label class="sl">Years <b id="eYv"></b></label><input type="range" id="eY" min="5" max="35" value="25" />
+        <label class="sl">Direct plan expense ratio <b id="eDv"></b></label><input type="range" id="eD" min="0.1" max="1.5" step="0.05" value="0.6" />
+        <label class="sl">Regular plan expense ratio <b id="eRv"></b></label><input type="range" id="eR" min="0.5" max="2.5" step="0.05" value="1.6" />
+      </div>
+      <div>
+        <div class="small">Extra money in your pocket with the Direct plan</div><div class="stat up" id="eDiff"></div>
+        <div class="out" style="grid-template-columns:1fr 1fr"><div><span class="small">Direct</span><b id="eDirect"></b></div><div><span class="small">Regular</span><b id="eReg"></b></div></div>
+        <p class="small" style="margin-top:12px">Assumes the fund's investments earn 12% a year before fees.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="sip">
+  <div class="num">CHAPTER 5</div>
+  <h2 class="big reveal">SIP: invest a little,<br/><span class="grad">every month.</span></h2>
+  <p class="body reveal">A <b>SIP</b> (Systematic Investment Plan) isn't a product. It's a <b>way of investing</b> in a mutual fund: a fixed amount is auto-debited from your bank every month and buys units at that day's NAV. No timing the market, no big lump sum needed.</p>
+  <p class="body reveal">The magic ingredient is <b>compounding</b>: your returns start earning returns of their own. In the early years it feels slow. Then it takes off.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · SIP CALCULATOR</div>
+    <div class="grid2">
+      <div>
+        <label class="sl">Every month <b id="sAv"></b></label><input type="range" id="sA" min="500" max="100000" step="500" value="5000" />
+        <label class="sl">For <b id="sYv"></b></label><input type="range" id="sY" min="1" max="40" value="15" />
+        <label class="sl">Expected yearly return <b id="sRv"></b></label><input type="range" id="sR" min="4" max="18" step="0.5" value="12" />
+        <label class="sl">Increase SIP every year by <b id="sUv"></b></label><input type="range" id="sU" min="0" max="20" value="0" />
+        <div class="small" style="margin-top:24px">Estimated value</div><div class="stat grad" id="sRes"></div>
+        <div class="out"><div><span class="small">You invest</span><b id="sInv"></b></div><div><span class="small">Market adds</span><b id="sGain" class="up"></b></div><div><span class="small">Multiplied</span><b id="sX"></b></div></div>
+      </div>
+      <div>
+        <canvas class="chart" id="sChart" style="height:340px"></canvas>
+        <div class="legend"><span><i style="background:var(--g2)"></i>Value</span><span><i style="background:rgba(255,255,255,.5)"></i>Money you put in</span></div>
+      </div>
+    </div>
+    <p class="small" style="margin-top:16px">Returns are never guaranteed. 12% is a common long-run assumption for Indian equity funds, but real returns jump around year to year.</p>
+  </div>
+</section>
+
+<section class="chapter" id="rca">
+  <div class="num">CHAPTER 6</div>
+  <h2 class="big reveal">Why SIPs love<br/>a <span class="down">falling</span> market.</h2>
+  <p class="body reveal">When the market falls, your fixed ₹5,000 buys <b>more units</b>. When it rises, it buys fewer. Over time your average cost per unit evens out. This is called <b>rupee cost averaging</b>, and it's why SIP investors shouldn't panic in a crash.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · SIP VS LUMP SUM ON A BUMPY MARKET</div>
+    <div class="row"><button class="chip" id="newPath">🎲 New random market</button><span class="small">₹5,000/month for 24 months vs ₹1,20,000 all at once on day one.</span></div>
+    <canvas class="chart" id="rChart" style="margin-top:14px"></canvas>
+    <div class="out">
+      <div><span class="small">SIP · avg cost per unit</span><b id="rSipAvg"></b></div>
+      <div><span class="small">SIP final value</span><b id="rSip"></b></div>
+      <div><span class="small">Lump sum final value</span><b id="rLump"></b></div>
+    </div>
+    <p class="small" id="rTxt" style="margin-top:14px;font-size:15px"></p>
+  </div>
+</section>
+
+<section class="chapter" id="real">
+  <div class="num">CHAPTER 7</div>
+  <h2 class="big reveal">A real example:<br/>5 years of <span class="grad">Nifty.</span></h2>
+  <p class="body reveal">Let's stop imagining. If you had started a ₹5,000 monthly SIP into the Nifty 50 five years ago, here's what would have happened, using real index prices.</p>
+  <div class="glass lab reveal">
+    <div class="tag">REAL DATA · NIFTY 50, LAST 5 YEARS</div>
+    <div class="grid2">
+      <div><canvas class="chart" id="xChart"></canvas></div>
+      <div>
+        <div class="small">Your SIP today</div><div class="stat up" id="xVal">—</div>
+        <div class="out" style="grid-template-columns:1fr 1fr"><div><span class="small">You put in</span><b id="xInv">—</b></div><div><span class="small">Yearly return (XIRR)</span><b id="xIrr">—</b></div></div>
+        <p class="small" style="margin-top:12px" id="xNote">Loading real data…</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="quiz"></div>
+
+<a class="glass next reveal" href="/learn/fno.html">
+  <div><div class="small">NEXT LESSON · 05</div><h3>Futures &amp; options</h3></div><span class="pill">Continue →</span>
+</a>
+</div>
+
+<script src="/assets/app.js"></script>
+<script>
+L.chrome('sip');
+const $ = L.$;
+const lakh = n => n >= 1e7 ? '₹' + (n/1e7).toFixed(2) + ' Cr' : n >= 1e5 ? '₹' + (n/1e5).toFixed(2) + ' L' : L.inr(n);
+
+/* pool */
+$('#dInv').innerHTML = '<i></i>'.repeat(40); $('#dStk').innerHTML = '<i></i>'.repeat(30);
+let pt = [];
+$('#poolGo').onclick = () => {
+  pt.forEach(clearTimeout); pt = []; L.$$('.dots i').forEach(i => i.classList.remove('on'));
+  L.$$('#dInv i').forEach((d,i) => pt.push(setTimeout(() => { d.classList.add('on'); $('#pInv').textContent = ((i+1)*250).toLocaleString('en-IN') + ' people'; $('#pPool').textContent = '₹' + ((i+1)*250*5000/1e7).toFixed(2) + ' Cr pooled'; }, i*45)));
+  L.$$('#dStk i').forEach((d,i) => pt.push(setTimeout(() => { d.classList.add('on'); $('#pStk').textContent = (i+1)*2 + ' stocks'; }, 2000 + i*60)));
+};
+
+/* NAV */
+function nav(){ const m = +$('#nM').value; $('#nMv').textContent = (m>0?'+':'') + m + '%'; const n = 50*(1+m/100); $('#nNav').textContent = L.inr(n,2); $('#nVal').textContent = L.inr(200*n); $('#nVal').className = m>=0?'up':'down'; }
+$('#nM').oninput = nav; nav();
+
+/* types */
+const RT = {88:'Very High risk. Expect big swings, and plan to stay invested 5+ years.',22:'Low to Moderate risk. Smaller swings, steadier returns.',55:'Moderately High risk. The bond part cushions some falls.',80:'Very High risk, the same as the market it copies, but with the lowest fees.',96:'Very High risk, the top of the scale. Can drop 40–60% in a bad year.',8:'Low risk. Very stable, returns similar to a savings account or slightly better.'};
+L.$$('[data-risk]').forEach(c => c.onclick = () => { L.$$('[data-risk]').forEach(x => x.classList.toggle('on', x===c)); $('#riskI').style.left = c.dataset.risk + '%'; $('#riskTxt').innerHTML = `<b style="color:var(--fg)">${c.querySelector('b').textContent}:</b> ${RT[c.dataset.risk]}`; });
+
+/* expense */
+function fv(m, y, r, up=0){ let v = 0, amt = m; const mr = r/12; for (let k=0; k<y*12; k++){ if (k && k%12===0) amt *= 1+up; v = (v + amt) * (1 + mr); } return v; }
+function exp(){
+  const a = +$('#eA').value, y = +$('#eY').value, d = +$('#eD').value, r = +$('#eR').value;
+  $('#eAv').textContent = L.inr(a); $('#eYv').textContent = y + ' years'; $('#eDv').textContent = d.toFixed(2) + '%'; $('#eRv').textContent = r.toFixed(2) + '%';
+  const D = fv(a, y, (12-d)/100), R = fv(a, y, (12-r)/100);
+  $('#eDirect').textContent = lakh(D); $('#eReg').textContent = lakh(R); $('#eDiff').textContent = lakh(Math.max(0, D-R));
+}
+['eA','eY','eD','eR'].forEach(i => $('#'+i).oninput = exp); exp();
+
+/* SIP */
+function sip(){
+  const a = +$('#sA').value, y = +$('#sY').value, r = +$('#sR').value/100, u = +$('#sU').value/100;
+  $('#sAv').textContent = L.inr(a); $('#sYv').textContent = y + (y===1?' year':' years'); $('#sRv').textContent = r*100 + '%'; $('#sUv').textContent = u ? u*100 + '%' : 'off';
+  let v = 0, inv = 0, amt = a; const val = [0], put = [0];
+  for (let k=0; k<y*12; k++){ if (k && k%12===0) amt *= 1+u; inv += amt; v = (v + amt) * (1 + r/12); val.push(v); put.push(inv); }
+  $('#sRes').textContent = lakh(v); $('#sInv').textContent = lakh(inv); $('#sGain').textContent = lakh(v-inv); $('#sX').textContent = (v/inv).toFixed(2) + '×';
+  L.line($('#sChart'), val, '#00b3ff', { series2: put, min: 0 });
+}
+['sA','sY','sR','sU'].forEach(i => $('#'+i).oninput = sip); sip();
+
+/* rupee cost averaging */
+let seed = 11;
+function rca(){
+  const navs = L.walk(25, 100, .16, -.002, seed);
+  let units = 0; for (let m=0; m<24; m++) units += 5000 / navs[m];
+  const sipV = units * navs[24], lumpV = 120000 / navs[0] * navs[24], avg = 120000 / units;
+  L.line($('#rChart'), navs, '#00b3ff');
+  $('#rSipAvg').textContent = L.inr(avg,2); $('#rSip').textContent = L.inr(sipV); $('#rLump').textContent = L.inr(lumpV);
+  $('#rSip').className = sipV >= 120000 ? 'up' : 'down'; $('#rLump').className = lumpV >= 120000 ? 'up' : 'down';
+  const simple = navs.slice(0,24).reduce((s,x)=>s+x,0)/24;
+  $('#rTxt').innerHTML = `The average NAV over those months was ${L.inr(simple,2)}, but your SIP's average cost was <b>${L.inr(avg,2)}</b>, which is lower, because you automatically bought more when prices were low. ` + (sipV > lumpV ? 'On this bumpy path, SIP beat the lump sum.' : 'On this path the lump sum won, which usually happens when markets mostly rise. SIP\'s real gift is discipline and less regret.');
+}
+$('#newPath').onclick = () => { seed = Math.floor(Math.random()*1e6)+1; rca(); }; rca();
+
+/* real Nifty SIP */
+function xirr(flows){ // flows: [{t: years, v}] ; solve NPV=0
+  let r = .1; for (let k=0; k<60; k++){ let f=0, df=0; flows.forEach(({t,v}) => { f += v/Math.pow(1+r,t); df += -t*v/Math.pow(1+r,t+1); }); const nr = r - f/df; if (!isFinite(nr)) break; if (Math.abs(nr-r) < 1e-7) { r = nr; break; } r = Math.max(-.99, nr); } return r;
+}
+(async () => {
+  try {
+    const q = (await L.quotes(['^NSEI'], '5y')).quotes[0], s = q.series; // weekly
+    const months = Math.floor(s.length / 4.345); let units = 0; const flows = [], vals = [];
+    for (let m=0; m<months; m++){ const p = s[Math.round(m*4.345)]; units += 5000/p; flows.push({t: m/12, v: -5000}); vals.push(units * p); }
+    const final = units * q.price, inv = 5000 * months; flows.push({t: months/12, v: final}); vals.push(final);
+    L.line($('#xChart'), vals, '#00e38c', { series2: vals.map((_,i) => Math.min(i+1, months)*5000), min: 0 });
+    $('#xVal').textContent = L.inr(final); $('#xVal').className = 'stat ' + (final >= inv ? 'up' : 'down');
+    $('#xInv').textContent = L.inr(inv); $('#xIrr').textContent = (xirr(flows)*100).toFixed(1) + '%';
+    $('#xNote').textContent = `${months} monthly instalments into the Nifty 50, priced at real weekly closing values. A real index fund would add dividends (roughly 1% a year) and subtract a small fee.`;
+  } catch(e) { $('#xNote').textContent = 'Real Nifty data loads on the published site.'; }
+})();
+
+L.quiz('#quiz', [
+  { q:'What is a mutual fund?', o:['A bank fixed deposit','A pool of investors\' money managed by a professional','A government pension','A single company\'s share'], a:1, why:'A fund pools money from many investors and a manager invests it across many securities.' },
+  { q:'A fund owns ₹100 crore of assets and has 2 crore units. What is the NAV (ignoring costs)?', o:['₹2','₹50','₹100','₹200'], a:1, why:'NAV = assets ÷ units = 100 crore ÷ 2 crore = ₹50.' },
+  { q:'What is a SIP?', o:['A type of fund','A way of investing a fixed amount regularly','A tax-saving bond','A share trading order'], a:1, why:'SIP is a method: a fixed amount invested in a fund at regular intervals.' },
+  { q:'The market falls 20%. What happens to your next SIP instalment?', o:['It buys more units','It buys fewer units','It\'s cancelled','It\'s paused by SEBI'], a:0, why:'Lower NAV means the same rupees buy more units. That\'s rupee cost averaging.' },
+  { q:'Which plan of the same fund usually gives higher returns?', o:['Regular','Direct','Both are identical','Whichever has the higher NAV'], a:1, why:'Direct plans have a lower expense ratio because no distributor commission is paid.' },
+  { q:'Which fund type is generally lowest risk?', o:['Small cap','Liquid','Mid cap','Sectoral'], a:1, why:'Liquid funds invest in very short-term debt and sit at the low end of the riskometer.' },
+], 'mf');
+L.motion();
+</script>
+</body>
+</html>

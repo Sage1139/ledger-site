@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Futures &amp; options — LEDGER</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>
+.out{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.out div{padding:16px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.out b{display:block;font-size:22px;font-family:'JetBrains Mono',monospace;margin-top:4px}
+.big-stat{font-size:clamp(64px,12vw,160px);font-weight:900;letter-spacing:-.05em;line-height:1}
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+.money .glass{padding:24px}
+.money b{display:block;font-size:18px;margin-bottom:6px}.money p{font-size:14px;color:var(--dim)}
+.mny{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.mny span{padding:6px 12px;border-radius:999px;font-size:13px;border:1px solid var(--line)}
+@media(max-width:860px){.out,.money{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-root="/">
+<div class="progress"></div>
+<div class="wrap">
+
+<header class="lesson-hero">
+  <div class="kicker">Lesson 05 · Trader</div>
+  <h1 class="big">Futures &amp;<br/><span class="grad">options.</span></h1>
+  <p class="lead" style="margin-top:24px">F&amp;O is the most exciting part of the market, and the most dangerous. We'll learn exactly how it works with real numbers, so you understand the game before anyone takes your money in it.</p>
+  <div class="meta"><span>18 min</span><span>4 interactive labs</span><span>7-question quiz</span></div>
+</header>
+
+<section class="chapter" id="warn">
+  <div class="callout bad reveal" style="max-width:none">
+    <div class="big-stat down">87.7%</div>
+    <p style="font-size:18px;margin-top:10px">of individual F&amp;O traders made a net loss in FY2025-26, according to SEBI's own study published in August 2026. Total net losses were about ₹91,685 crore. A year earlier, 91% lost.</p>
+  </div>
+  <p class="body reveal" style="margin-top:30px">That's not a reason to never learn F&amp;O. It's a reason to learn it properly, and to practise with fake money first. That's exactly what this lesson and the simulator are for.</p>
+</section>
+
+<section class="chapter" id="derivatives">
+  <div class="num">CHAPTER 1</div>
+  <h2 class="big reveal">What is a<br/><span class="grad">derivative?</span></h2>
+  <p class="body reveal">A <b>derivative</b> is a contract whose value comes from something else, called the <b>underlying</b>: a stock, or an index like the Nifty 50. You're not buying the thing itself. You're buying a deal about its future price.</p>
+  <p class="body reveal">Example from real life: a farmer agrees in June to sell rice to a mill in October at ₹30/kg. Whatever the market price is in October, the deal is fixed. The farmer is protected if prices crash, and the mill is protected if they spike. That's the original purpose of derivatives: <b>hedging risk</b>.</p>
+  <p class="body reveal">F&amp;O contracts trade in fixed bundles called <b>lots</b>. One Nifty 50 contract is currently <b>65 units</b>, so every 1-point move in Nifty is ₹65 per lot.</p>
+</section>
+
+<section class="chapter" id="futures">
+  <div class="num">CHAPTER 2</div>
+  <h2 class="big reveal">Futures:<br/>an obligation, <span class="down">with leverage.</span></h2>
+  <p class="body reveal">A <b>futures</b> contract is an agreement to buy or sell at a fixed price on a future date. Buy a Nifty future and you profit if Nifty rises, and lose if it falls, rupee for rupee.</p>
+  <p class="body reveal">The catch is <b>margin</b>. You don't pay the full contract value. You put down a deposit, roughly 10–15%. That's <b>leverage</b>: a small move in Nifty becomes a big move in your money, in both directions. If losses eat your margin, your broker will demand more money or close your trade.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · FEEL THE LEVERAGE</div>
+    <div class="grid2">
+      <div>
+        <div class="row" style="justify-content:space-between"><span class="small">Nifty when you buy</span><b class="mono" id="fSpot">—</b></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><span class="small">Contract value (65 × Nifty)</span><b class="mono" id="fVal"></b></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><span class="small">Margin you deposit (~12%)</span><b class="mono" id="fMar"></b></div>
+        <label class="sl">Nifty moves by <b id="fMv"></b></label><input type="range" id="fM" min="-10" max="10" step="0.1" value="2" />
+        <div class="row" style="margin-top:14px"><button class="chip on" data-fs="1">Bought (long)</button><button class="chip" data-fs="-1">Sold (short)</button></div>
+      </div>
+      <div>
+        <div class="small">Your profit or loss</div><div class="stat" id="fPnl"></div>
+        <div class="out" style="grid-template-columns:1fr 1fr"><div><span class="small">Nifty moved</span><b id="fN"></b></div><div><span class="small">Your margin moved</span><b id="fR"></b></div></div>
+        <p class="small" id="fTxt" style="margin-top:14px;font-size:15px"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="options">
+  <div class="num">CHAPTER 3</div>
+  <h2 class="big reveal">Options: a <span class="grad">right</span>,<br/>not an obligation.</h2>
+  <p class="body reveal">An <b>option</b> gives the buyer the right, but not the duty, to buy or sell at a fixed price (the <b>strike price</b>) before expiry. You pay a fee for that right, called the <b>premium</b>.</p>
+  <div class="grid2">
+    <div class="glass card reveal"><h3 class="up">Call option (CE)</h3><p class="small" style="font-size:15px;margin-top:8px">The right to <b style="color:var(--fg)">buy</b>. You buy a call when you think the price will <b class="up">go up</b>.</p></div>
+    <div class="glass card reveal"><h3 class="down">Put option (PE)</h3><p class="small" style="font-size:15px;margin-top:8px">The right to <b style="color:var(--fg)">sell</b>. You buy a put when you think the price will <b class="down">go down</b>.</p></div>
+  </div>
+  <p class="body reveal" style="margin-top:28px">An option <b>buyer</b> can lose at most the premium paid. The option <b>seller</b> (writer) collects the premium but can face very large losses. That's why sellers must put up big margins.</p>
+  <div class="money">
+    <div class="glass reveal"><b>In the money (ITM)</b><p>The option already has real value. A call with strike below the market price, or a put with strike above it.</p></div>
+    <div class="glass reveal"><b>At the money (ATM)</b><p>Strike is about the same as the current price. These trade the most.</p></div>
+    <div class="glass reveal"><b>Out of the money (OTM)</b><p>No real value yet, only hope and time. Cheap, and most expire worthless.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="payoff">
+  <div class="num">CHAPTER 4</div>
+  <h2 class="big reveal">The payoff chart:<br/>see your <span class="grad">future.</span></h2>
+  <p class="body reveal">Traders use payoff charts to see exactly what they'd make or lose at expiry for every possible Nifty level. Build a trade and drag Nifty around.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · BUILD AN OPTION TRADE (1 LOT = 65)</div>
+    <div class="row"><button class="chip on" data-pk="buy-CE">Buy call</button><button class="chip" data-pk="buy-PE">Buy put</button><button class="chip" data-pk="sell-CE">Sell call</button><button class="chip" data-pk="sell-PE">Sell put</button></div>
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <label class="sl">Strike price <b id="oKv"></b></label><input type="range" id="oK" min="-1000" max="1000" step="50" value="0" />
+        <label class="sl">Premium per unit <b id="oPv"></b></label><input type="range" id="oP" min="5" max="600" step="5" value="150" />
+        <label class="sl">Nifty at expiry <b id="oSv"></b></label><input type="range" id="oS" min="-1500" max="1500" step="10" value="300" />
+        <div class="out"><div><span class="small">P&amp;L at that level</span><b id="oPnl"></b></div><div><span class="small">Breakeven</span><b id="oBe"></b></div><div><span class="small">Max loss</span><b id="oMax"></b></div></div>
+      </div>
+      <div><canvas class="chart" id="oChart" style="height:320px"></canvas><div class="small" style="margin-top:8px">Dashed line = zero. Vertical line = your chosen Nifty level.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="decay">
+  <div class="num">CHAPTER 5</div>
+  <h2 class="big reveal">Time decay:<br/>the <span class="down">silent killer.</span></h2>
+  <p class="body reveal">An option's premium has two parts: <b>intrinsic value</b> (real value right now) and <b>time value</b> (the chance it becomes valuable before expiry). Every day that passes, time value melts away. This is called <b>theta</b>, and it speeds up near expiry.</p>
+  <p class="body reveal">That's a big reason option buyers lose. You can be right about the direction and still lose money if the move comes too slowly.</p>
+  <div class="glass lab reveal">
+    <div class="tag">LAB · WATCH A PREMIUM MELT (MODEL PRICE)</div>
+    <div class="grid2">
+      <div>
+        <label class="sl">Days to expiry <b id="dDv"></b></label><input type="range" id="dD" min="0" max="30" value="30" />
+        <div class="out" style="grid-template-columns:1fr 1fr"><div><span class="small">ATM call premium</span><b id="dPrem"></b></div><div><span class="small">Value of 1 lot</span><b id="dLot"></b></div></div>
+        <p class="small" style="margin-top:14px;font-size:15px" id="dTxt"></p>
+      </div>
+      <div><canvas class="chart" id="dChart"></canvas><div class="small">Premium if Nifty doesn't move at all, from 30 days to expiry.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="expiry">
+  <div class="num">CHAPTER 6</div>
+  <h2 class="big reveal">Expiry day.</h2>
+  <p class="body reveal">Every contract has an expiry date. Nifty 50 options currently expire <b>every Tuesday</b> (weekly), with a monthly contract expiring on the last Tuesday of the month. Index F&amp;O is <b>cash-settled</b>: no shares change hands, only the profit or loss is paid.</p>
+  <p class="body reveal">On expiry, out-of-the-money options become worth <b>zero</b>. In-the-money options are worth exactly their intrinsic value. Expiry days are wild, with huge swings in premiums. Beginners should stay far away.</p>
+  <div class="callout warn reveal">Every F&amp;O trade also costs brokerage, exchange fees, GST, stamp duty and Securities Transaction Tax (STT). For small, frequent trades, these charges alone can turn a winning strategy into a losing one.</div>
+</section>
+
+<section class="chapter" id="lose">
+  <div class="num">CHAPTER 7</div>
+  <h2 class="big reveal">Why most traders lose,<br/>and how not to.</h2>
+  <div class="grid2">
+    <div class="glass card reveal"><h3 class="down">What goes wrong</h3><p class="body" style="font-size:16px;margin-top:12px">Buying cheap OTM options hoping for a jackpot · trading on expiry day · no stop-loss · borrowing money to trade · revenge trading after a loss · following "tips" groups · ignoring charges.</p></div>
+    <div class="glass card reveal"><h3 class="up">What helps</h3><p class="body" style="font-size:16px;margin-top:12px">Practise for months with virtual money · risk only 1–2% of capital per trade · always know your maximum loss before entering · keep a trading journal · treat F&amp;O as a skill, not a lottery.</p></div>
+  </div>
+</section>
+
+<div id="quiz"></div>
+
+<a class="glass next reveal" href="/simulator/">
+  <div><div class="small">YOU'VE FINISHED THE LESSONS</div><h3>Practise in the simulator</h3></div><span class="pill green">Open simulator →</span>
+</a>
+</div>
+
+<script src="/assets/app.js"></script>
+<script>
+L.chrome('learn');
+const $ = L.$; const LOT = 65;
+let SPOT = 25000;
+
+/* futures */
+let fs = 1;
+function fut(){
+  const m = +$('#fM').value, val = SPOT*LOT, mar = val*.12, pnl = fs*SPOT*m/100*LOT, r = pnl/mar*100;
+  $('#fSpot').textContent = L.num(SPOT); $('#fVal').textContent = L.inr(val); $('#fMar').textContent = L.inr(mar);
+  $('#fMv').textContent = (m>0?'+':'') + m.toFixed(1) + '%';
+  $('#fPnl').textContent = (pnl>=0?'+':'') + L.inr(pnl); $('#fPnl').className = 'stat ' + (pnl>=0?'up':'down');
+  $('#fN').textContent = (m>0?'+':'') + m.toFixed(1) + '%'; $('#fR').textContent = (r>0?'+':'') + r.toFixed(0) + '%'; $('#fR').className = r>=0?'up':'down';
+  $('#fTxt').innerHTML = r <= -100 ? '<b class="down">Your entire margin is gone</b>, and you owe more. Your broker would have closed the trade long before this.' : `A ${Math.abs(m).toFixed(1)}% move in Nifty became a <b>${Math.abs(r).toFixed(0)}%</b> ${r>=0?'gain':'loss'} on your money. That's leverage, about ${(1/.12).toFixed(1)}×.`;
+}
+L.$$('[data-fs]').forEach(b => b.onclick = () => { fs = +b.dataset.fs; L.$$('[data-fs]').forEach(x => x.classList.toggle('on', x===b)); fut(); });
+$('#fM').oninput = fut;
+
+/* payoff */
+let pk = 'buy-CE';
+function payoff(){
+  const [side, type] = pk.split('-'), atm = Math.round(SPOT/50)*50;
+  const K = atm + +$('#oK').value, P = +$('#oP').value, S = atm + +$('#oS').value, sg = side === 'buy' ? 1 : -1;
+  const pl = (x) => sg * ((type==='CE' ? Math.max(0, x-K) : Math.max(0, K-x)) - P) * LOT;
+  $('#oKv').textContent = L.num(K,0); $('#oPv').textContent = L.inr(P); $('#oSv').textContent = L.num(S,0);
+  const v = pl(S); $('#oPnl').textContent = (v>=0?'+':'') + L.inr(v); $('#oPnl').className = v>=0?'up':'down';
+  $('#oBe').textContent = L.num(type==='CE' ? K+P : K-P, 0);
+  $('#oMax').textContent = side==='buy' ? L.inr(-P*LOT) : (type==='CE' ? 'Unlimited' : L.inr(-(K-P)*LOT));
+  $('#oMax').className = 'down';
+  const xs = []; for (let x = atm-1500; x <= atm+1500; x += 25) xs.push(pl(x));
+  L.line($('#oChart'), xs, v >= 0 ? '#00e38c' : '#ff453a', { zero: true, fill: false, mark: (S-(atm-1500))/25 });
+}
+L.$$('[data-pk]').forEach(b => b.onclick = () => { pk = b.dataset.pk; L.$$('[data-pk]').forEach(x => x.classList.toggle('on', x===b)); payoff(); });
+['oK','oP','oS'].forEach(i => $('#'+i).oninput = payoff);
+
+/* decay */
+function decay(){
+  const d = +$('#dD').value, K = Math.round(SPOT/50)*50, p = L.bs(SPOT, K, d/365, 'CE'), p30 = L.bs(SPOT, K, 30/365, 'CE');
+  $('#dDv').textContent = d + (d===1?' day':' days');
+  $('#dPrem').textContent = L.inr(p,2); $('#dLot').textContent = L.inr(p*LOT);
+  $('#dTxt').innerHTML = d === 30 ? 'Drag the slider left to move closer to expiry.' : `Nifty didn't move at all, but this option lost <b class="down">${((1-p/p30)*100).toFixed(0)}%</b> of its value, ${L.inr((p30-p)*LOT)} per lot, just from time passing.`;
+  const curve = []; for (let k = 30; k >= 0; k -= .5) curve.push(L.bs(SPOT, K, k/365, 'CE'));
+  L.line($('#dChart'), curve, '#ffb340', { min: 0, mark: (30-d)*2 });
+}
+$('#dD').oninput = decay;
+
+function all(){ fut(); payoff(); decay(); }
+(async () => { try { const q = (await L.quotes(['^NSEI'])).quotes[0]; SPOT = q.price; } catch(e) {} all(); })();
+all();
+
+L.quiz('#quiz', [
+  { q:'What is the current lot size of a Nifty 50 F&O contract?', o:['25','50','65','100'], a:2, why:'NSE revised the Nifty lot size to 65 from January 2026.' },
+  { q:'You think Nifty will rise. Which option would you buy?', o:['Put (PE)','Call (CE)','Either one','Neither, options only fall'], a:1, why:'A call gives the right to buy, and it gains value when the price rises.' },
+  { q:'What is the most an option BUYER can lose?', o:['Unlimited','The premium paid','The full contract value','Twice the premium'], a:1, why:'The buyer\'s maximum loss is the premium. Sellers face the large or unlimited risk.' },
+  { q:'Futures let you control a large position with a small deposit. This is called…', o:['Dividend','Leverage','Diversification','Settlement'], a:1, why:'Margin creates leverage: gains and losses are magnified relative to your deposit.' },
+  { q:'Nifty doesn\'t move for a week. What happens to an option you bought?', o:['It gains value','It stays the same','It loses value from time decay','It turns into shares'], a:2, why:'Theta (time decay) erodes the premium every day, especially near expiry.' },
+  { q:'Nifty 50 weekly options currently expire on…', o:['Monday','Tuesday','Thursday','Friday'], a:1, why:'NSE moved its weekly and monthly expiries to Tuesday in September 2025.' },
+  { q:'According to SEBI, roughly what share of individual F&O traders lost money in FY2025-26?', o:['About 1 in 10','About half','Nearly 9 in 10','Almost none'], a:2, why:'SEBI\'s August 2026 study found 87.7% made net losses.' },
+], 'fno');
+L.motion();
+</script>
+</body>
+</html>
