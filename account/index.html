@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your account — LEDGER</title>
+<meta name="robots" content="noindex" />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>
+.acc{max-width:1000px;margin:0 auto;padding:40px 5vw 80px}
+.head{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.av{width:84px;height:84px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--g1),var(--g2));display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;color:#000;flex-shrink:0}
+.av img{width:100%;height:100%;object-fit:cover}
+.head h1{font-size:clamp(30px,4vw,46px);font-weight:900;letter-spacing:-.03em}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:30px}
+.cards .glass{padding:24px}
+.cards b{display:block;font-family:'JetBrains Mono',monospace;font-size:26px;margin-top:6px}
+.lv{display:grid;gap:10px;margin-top:14px}
+.lv div{display:grid;grid-template-columns:160px 1fr 50px;gap:12px;align-items:center;font-size:14px}
+.bar{height:8px;border-radius:8px;background:#1f1f24;overflow:hidden}.bar i{display:block;height:100%}
+.sec{margin-top:22px;padding:26px}
+.sec h3{margin-bottom:6px}
+.row2{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.danger{color:var(--red);border-color:rgba(255,69,58,.4)}
+.sel{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:9px 12px}
+@media(max-width:800px){.cards{grid-template-columns:1fr}.lv div{grid-template-columns:110px 1fr 40px}}
+</style>
+</head>
+<body data-root="/">
+<div class="acc" id="root"><p class="small">Loading your account…</p></div>
+<script src="/assets/app.js"></script>
+<script src="/learn/lessons.js"></script>
+<script>
+L.chrome('');
+const $ = L.$;
+function render(user) {
+  if (!LAuth.configured) { $('#root').innerHTML = '<div class="glass sec"><h3>Accounts are being set up</h3><p class="small">Until then your progress is saved in this browser.</p></div>'; return; }
+  if (!user) { location.replace('/account/login.html?next=/account/'); return; }
+  const md = user.user_metadata || {}, name = md.full_name || md.name || user.email.split('@')[0];
+  const done = L.store.get('ledger.done2', {}), sim = L.store.get('ledger.sim.v1', null);
+  const total = LESSONS.length, n = LESSONS.filter((l) => done[l.id]).length;
+  let worth = '₹10,00,000', orders = 0;
+  if (sim) { const hv = Object.entries(sim.holdings || {}).reduce((a, [, h]) => a + h.qty * h.avg, 0); worth = L.inr(sim.cash + hv); orders = (sim.orders || []).filter((o) => o.status === 'COMPLETE').length; }
+  const langs = window.LedgerAI ? LedgerAI.LANGS : [['en', 'English']], cur = window.LedgerAI ? LedgerAI.lang() : 'en';
+  $('#root').innerHTML = `
+  <div class="head reveal"><div class="av">${md.avatar_url ? `<img src="${md.avatar_url}" alt="" referrerpolicy="no-referrer">` : name[0].toUpperCase()}</div>
+    <div><div class="kicker">Your account</div><h1>Hi, ${name.replace(/</g, '&lt;')}</h1><div class="small">${user.email} · signed in with ${(user.app_metadata && user.app_metadata.provider) === 'google' ? 'Google' : 'email'}</div></div></div>
+  <div class="cards">
+    <div class="glass reveal"><span class="small">Lessons completed</span><b>${n} / ${total}</b></div>
+    <div class="glass reveal"><span class="small">Virtual account (cost value)</span><b>${worth}</b></div>
+    <div class="glass reveal"><span class="small">Practice trades done</span><b>${orders}</b></div>
+  </div>
+  <div class="glass sec reveal"><h3>Learning progress</h3><div class="lv">${LEVELS.map((lv) => { const ls = LESSONS.filter((l) => l.level === lv.id), d = ls.filter((l) => done[l.id]).length; return `<div><span>${lv.name}</span><div class="bar"><i style="width:${(d / ls.length) * 100}%;background:${lv.color}"></i></div><span class="small">${d}/${ls.length}</span></div>`; }).join('')}</div>
+    <div class="row2"><a class="pill green" href="/learn/">Continue learning</a><a class="ghost" href="/simulator/">Open simulators</a></div></div>
+  <div class="glass sec reveal"><h3>Preferences</h3><p class="small">Language the AI tutor answers in.</p><div class="row2"><select class="sel" id="lang">${langs.map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+  <div class="glass sec reveal"><h3>Sync &amp; privacy</h3><p class="small">Your progress, language and virtual portfolio are saved to your account and follow you to any device. We store nothing else: no bank, card, PAN or Aadhaar details, ever.</p>
+    <div class="row2"><button class="ghost" id="sync">Sync now</button><button class="ghost" id="out">Sign out</button><button class="ghost danger" id="del">Delete my saved data</button></div><div class="small" id="st" style="margin-top:10px"></div></div>`;
+  $('#lang').onchange = () => { if (window.LedgerAI) LedgerAI.setLang($('#lang').value); L.store.set('ledger.lang', $('#lang').value); L.toast('Language saved'); };
+  $('#sync').onclick = async () => { $('#st').textContent = 'Syncing…'; await LAuth.syncNow(); $('#st').textContent = 'All synced ✓'; };
+  $('#out').onclick = async () => { await LAuth.signOut(); location.href = '/'; };
+  $('#del').onclick = async () => { const b = $('#del'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Click again to permanently delete'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Delete my saved data'; }, 4000); return; }
+    await LAuth.deleteData(); $('#st').textContent = 'Your saved data was deleted from our servers. (This browser still keeps its local copy.)'; };
+  L.motion();
+}
+const wait = setInterval(() => { if (window.LAuth && LAuth.ready) { clearInterval(wait); LAuth.onChange(render); } }, 150);
+</script>
+</body>
+</html>

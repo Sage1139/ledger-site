@@ -171,6 +171,42 @@ decay(el) {
   el.innerHTML = `<div class="grid2"><div>${slider('dd', 'Days left until expiry', 0, 30, 1, 30)}${out([['Option price', 'd1'], ['One lot is worth', 'd2']])}<p class="small" id="dx" style="font-size:15px"></p></div><canvas class="chart" id="dc"></canvas></div>`;
   bind(el, ['dd'], () => { const d = v(el, 'dd'), K = Math.round(SPOT / 50) * 50, p = L.bs(SPOT, K, d / 365, 'CE'), p0 = L.bs(SPOT, K, 30 / 365, 'CE'); set(el, 'ddV', d + ' days'); set(el, 'd1', inr(p, 2)); set(el, 'd2', inr(p * 65)); set(el, 'dx', d === 30 ? 'Drag left: time passes, Nifty stays still.' : `Nifty didn't move, yet the option lost <b class="down">${((1 - p / p0) * 100).toFixed(0)}%</b> (${inr((p0 - p) * 65)} per lot).`); const c = []; for (let k = 30; k >= 0; k -= 0.5) c.push(L.bs(SPOT, K, k / 365, 'CE')); L.line(q(el, '#dc'), c, '#ffb340', { min: 0, mark: (30 - d) * 2, animate: false }); });
 },
+sipStory(el) {
+  // a SIP lived month by month: money leaves the bank, units arrive, value moves (example NAVs with a realistic bumpy rise)
+  let S; const AMT = 2000, START = 100000;
+  const reset = () => { S = { m: 0, bank: START, units: 0, inv: 0, nav: 50, seed: 7, log: [], done: false }; draw(); };
+  const rnd = () => ((S.seed = (S.seed * 16807) % 2147483647) / 2147483647);
+  const month = () => { if (S.done) return; S.m++; S.nav = Math.max(20, S.nav * (1 + 0.01 + (rnd() - 0.5) * 0.09)); const u = AMT / S.nav; S.bank -= AMT; S.units += u; S.inv += AMT;
+    S.log.unshift(`<tr><td>Month ${S.m}</td><td class="down">−${inr(AMT)}</td><td>${inr(S.nav, 2)}</td><td>${num(u, 2)}</td><td>${num(S.units, 2)}</td><td>${inr(S.units * S.nav)}</td></tr>`); };
+  const draw = () => { const val = S.units * S.nav, g = val - S.inv, y = Math.floor(S.m / 12), mo = S.m % 12;
+    el.innerHTML = `<div class="small">Example: ₹${AMT.toLocaleString('en-IN')} SIP on the 5th of every month. Your bank starts with ${inr(START)}. NAVs are a made-up but realistic bumpy path.</div>
+    <div class="out"><div><span class="small">🏦 Bank</span><b>${inr(S.bank)}</b></div><div><span class="small">📦 Units owned</span><b>${num(S.units, 2)}</b></div><div><span class="small">💰 You put in</span><b>${inr(S.inv)}</b></div><div><span class="small">💼 Worth now</span><b class="${S.done ? '' : g >= 0 ? 'up' : 'down'}">${inr(val)}</b></div></div>
+    <div class="row" style="margin-top:14px"><span class="small">Time passed: <b style="color:var(--fg)">${y} yr ${mo} mo</b></span>
+      ${S.done ? '<button class="ghost" data-a="reset">Start again</button>' : `<button class="pill green" data-a="m">Next month ▶</button><button class="ghost" data-a="y">+1 year ⏩</button><button class="ghost" data-a="t">Jump to 10 years ⏭</button>${S.units ? '<button class="pill" style="background:var(--red);color:#fff" data-a="r">Redeem everything</button>' : ''}`}</div>
+    <div class="explain" id="ssx">${S.done ? S.msg : S.m === 0 ? 'Press <b>Next month</b>. Watch ₹2,000 leave your bank and turn into units.' : `This month ₹2,000 bought ${num(AMT / S.nav, 2)} units at NAV ${inr(S.nav, 2)}. ${S.m > 1 && S.log.length > 1 ? 'When the NAV is lower, the same ₹2,000 buys <b>more</b> units.' : ''} Your gain so far: <b class="${g >= 0 ? 'up' : 'down'}">${g >= 0 ? '+' : ''}${inr(g)}</b>.`}</div>
+    <div style="max-height:200px;overflow:auto;margin-top:12px"><table class="tbl" style="font-size:13px"><thead><tr><th>Month</th><th>From bank</th><th>NAV</th><th>Units bought</th><th>Total units</th><th>Worth</th></tr></thead><tbody>${S.log.slice(0, 120).join('')}</tbody></table></div>`;
+    qa(el, '[data-a]').forEach((b) => (b.onclick = () => { const a = b.dataset.a;
+      if (a === 'm') month(); if (a === 'y') for (let i = 0; i < 12; i++) month(); if (a === 't') while (S.m < 120) month(); if (a === 'reset') return reset();
+      if (a === 'r') { const val = S.units * S.nav, g = val - S.inv; S.bank += val; S.done = true; S.msg = `💸 You redeemed <b>${num(S.units, 2)} units × NAV ${inr(S.nav, 2)} = ${inr(val)}</b>. It reaches your bank in 1–3 working days. You put in ${inr(S.inv)} over ${S.m} months, so you ${g >= 0 ? 'gained' : 'lost'} <b class="${g >= 0 ? 'up' : 'down'}">${inr(Math.abs(g))}</b>${S.m < 12 ? '. Redeeming within 1 year usually costs a 1% exit load, and gains are taxed at 20%.' : '. Equity fund gains held over 1 year: first ₹1.25 lakh a year is tax-free, then 12.5%.'}`; S.units = 0; }
+      draw(); })); };
+  reset();
+},
+optionStory(el) {
+  // a 1-lot call option lived day by day, so learners feel premium, time decay and exit
+  let S;
+  const reset = () => { const atm = Math.round(SPOT / 50) * 50, K = atm + 100; S = { spot: SPOT, K, day: 0, days: 7, entry: L.bs(SPOT, K, 7 / 365, 'CE'), log: [], done: false }; draw(); };
+  const prem = () => L.bs(S.spot, S.K, Math.max(0, S.days - S.day) / 365, 'CE');
+  const step = (mv) => { if (S.done) return; S.day++; S.spot += mv; const p = prem(); S.log.unshift(`Day ${S.day}: Nifty ${mv > 0 ? '▲' : mv < 0 ? '▼' : '='} ${num(S.spot, 0)} → premium ${inr(p, 2)} (${(p >= S.entry ? '+' : '') + inr((p - S.entry) * 65)})`); if (S.day >= S.days) end(true); };
+  const end = (expiry) => { const p = expiry ? Math.max(0, S.spot - S.K) : prem(), pl = (p - S.entry) * 65; S.done = true; S.msg = (expiry ? `⌛ <b>Expiry day.</b> Nifty closed at ${num(S.spot, 0)}. The option is worth ₹${num(p)} per unit (${S.spot > S.K ? 'Nifty above strike, so it has value' : 'Nifty below strike, so it\'s worth zero'}).` : `🚪 You sold (exited) at ${inr(p, 2)} per unit.`) + ` You paid ${inr(S.entry * 65)} and got back ${inr(p * 65)}: <b class="${pl >= 0 ? 'up' : 'down'}">${pl >= 0 ? 'profit ' : 'loss '}${inr(Math.abs(pl))}</b>.`; };
+  const draw = () => { const p = S.done ? null : prem(), pl = p != null ? (p - S.entry) * 65 : 0;
+    el.innerHTML = `<div class="small">You bought <b style="color:var(--fg)">1 lot of NIFTY ${S.K} CE</b> (a call: you win if Nifty goes above ${S.K}). Paid ${inr(S.entry, 2)} × 65 = <b style="color:var(--fg)">${inr(S.entry * 65)}</b>. Expiry in ${S.days} days.</div>
+    <div class="out"><div><span class="small">Nifty</span><b>${num(S.spot, 0)}</b></div><div><span class="small">Option price now</span><b>${p != null ? inr(p, 2) : '—'}</b></div><div><span class="small">Days left</span><b>${Math.max(0, S.days - S.day)}</b></div><div><span class="small">Profit / loss</span><b class="${pl >= 0 ? 'up' : 'down'}">${p != null ? (pl >= 0 ? '+' : '') + inr(pl) : '—'}</b></div></div>
+    <div class="row" style="margin-top:14px">${S.done ? '<button class="ghost" data-a="r">Try again</button>' : '<span class="small">Next day, Nifty…</span><button class="pill green" data-a="up">rises 150 ▲</button><button class="ghost" data-a="flat">stays flat =</button><button class="pill" style="background:var(--red);color:#fff" data-a="dn">falls 150 ▼</button><button class="ghost" data-a="x">Sell now (exit)</button>'}</div>
+    <div class="explain">${S.done ? S.msg : S.day === 0 ? 'Choose what Nifty does each day. Try "stays flat" twice and watch the price melt from time decay.' : S.log[0]}</div>
+    <div class="log">${S.log.slice(1).map((l) => `<div>${l}</div>`).join('')}</div>`;
+    qa(el, '[data-a]').forEach((b) => (b.onclick = () => { const a = b.dataset.a; if (a === 'r') return reset(); if (a === 'up') step(150); if (a === 'dn') step(-150); if (a === 'flat') step(0); if (a === 'x') end(false); draw(); })); };
+  reset();
+},
 goSim(el) { el.innerHTML = `<div class="row"><a class="pill green" href="/simulator/trade.html?tab=chain">Open F&amp;O simulator →</a><a class="ghost" href="/simulator/">All simulators</a></div>`; },
 };
 })();

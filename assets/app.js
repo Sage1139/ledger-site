@@ -1,5 +1,6 @@
 /* ===== LEDGER shared script ===== */
 const BRAND = 'LEDGER'; // change the site name here once, it updates every page
+const CONTACT_EMAIL = ''; // add your support email here; it appears on the Terms, Privacy and footer
 
 const L = (() => {
   const $ = (s, el = document) => el.querySelector(s);
@@ -31,25 +32,30 @@ const L = (() => {
       <div class="row"><a class="pill" href="/simulator/">Simulators</a><button class="menu" aria-label="Menu">☰</button></div>`;
     document.body.prepend(nav); document.body.classList.add('has-nav');
     $('.menu', nav).onclick = () => $('ul', nav).classList.toggle('open');
-    let lastY = scrollY;
-    const onScroll = () => {
-      const y = scrollY, menuOpen = $('ul', nav).classList.contains('open');
+    // Hide after a deliberate scroll down, show after a deliberate scroll up. Small jitters (trackpads,
+    // momentum, bouncing at the page bottom) are ignored, so the bar never flickers.
+    let anchorY = scrollY, hidden = false, ticking = false;
+    const update = () => {
+      ticking = false;
+      const y = Math.max(0, scrollY), max = document.documentElement.scrollHeight - innerHeight, menuOpen = $('ul', nav).classList.contains('open');
       nav.classList.toggle('solid', y > 10);
-      nav.classList.toggle('hide', y > 120 && y > lastY + 2 && !menuOpen);
-      if (y < lastY - 2 || y < 120) nav.classList.remove('hide');
-      lastY = y;
+      if (y < 120 || menuOpen) { if (hidden) { hidden = false; nav.classList.remove('hide'); } anchorY = y; return; }
+      if (y >= max - 2) return; // ignore rubber-band bounce at the very bottom
+      if (!hidden && y - anchorY > 60) { hidden = true; nav.classList.add('hide'); anchorY = y; }
+      else if (hidden && anchorY - y > 40) { hidden = false; nav.classList.remove('hide'); anchorY = y; }
+      else if ((!hidden && y < anchorY) || (hidden && y > anchorY)) anchorY = y; // keep the anchor at the turning point
     };
-    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true }); update();
     loadAI();
     const f = document.createElement('footer');
     f.className = 'foot-main';
-    f.innerHTML = `${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
+    f.innerHTML = `<div style="margin-bottom:10px"><a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a>${CONTACT_EMAIL ? ` · <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>` : ''}</div>${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
     document.body.append(f);
     document.title = document.title.replace(/LEDGER/g, BRAND);
     $$('[data-brand]').forEach((e) => (e.textContent = BRAND));
   }
 
-  function loadAI() { if (window.__aiLoaded) return; window.__aiLoaded = 1; const s = document.createElement('script'); s.src = '/assets/ai.js'; s.defer = true; document.body.append(s); }
+  function loadAI() { if (window.__aiLoaded) return; window.__aiLoaded = 1; ['/assets/ai.js', '/assets/auth.js'].forEach((src) => { const s = document.createElement('script'); s.src = src; s.defer = true; document.body.append(s); }); }
 
   /* --- scroll reveal + reading progress --- */
   function motion() {

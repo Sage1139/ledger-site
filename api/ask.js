@@ -56,24 +56,38 @@ async function geminiCandidates(key) {
   return geminiModels;
 }
 
+let lastGood = null; // the model that answered most recently is tried first next time (warm instances)
 async function askGemini(key, system, messages) {
-  const models = await geminiCandidates(key);
+  const list = await geminiCandidates(key);
+  const models = lastGood && list.includes(lastGood) ? [lastGood, ...list.filter((m) => m !== lastGood)] : list;
   let lastErr;
   const tries = models.length === 1 ? [models[0], models[0], models[0]] : models; // only one model? retry it with a pause
+  const started = Date.now();
   for (const [n, model] of tries.entries()) {
+    if (Date.now() - started > 40000) break; // stay inside the function time limit
     if (n && tries[n - 1] === model) await new Promise((r) => setTimeout(r, 1500));
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000); // a stuck model shouldn't hold the learner hostage
+    let r;
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        signal: ctl.signal,
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-        generationConfig: { temperature: 0.5, maxOutputTokens: 1200 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } },
       }),
-    });
+      });
+    } catch (e) { clearTimeout(timer); lastErr = new Error(`${model}: timed out`); continue; }
+    clearTimeout(timer);
     let j = {}; try { j = await r.json(); } catch (e) {}
+    if (r.status === 400 && JSON.stringify(j).includes('thinking')) { // some models don't accept the "no thinking" switch
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { temperature: 0.5, maxOutputTokens: 1200 } }) });
+      j = {}; try { j = await r.json(); } catch (e) {}
+    }
     if (r.ok) {
-      const text = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || '').join('').trim();
-      if (text) return text;
+      const text = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim();
+      if (text) { lastGood = model; return text; }
       lastErr = new Error('empty reply from ' + model); continue;
     }
     lastErr = new Error(`${model}: ${(j.error && j.error.message) || r.status}`);

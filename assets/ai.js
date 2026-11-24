@@ -68,6 +68,7 @@
     ta.value = ''; ta.style.height = ''; busy = true; send.disabled = true; sug.innerHTML = '';
     bubble('user', q); msgs.push({ role: 'user', content: q });
     const wait = bubble('assistant', ''); wait.innerHTML = '<span class="ai-dots"><span></span><span></span><span></span></span>';
+    const slow = setTimeout(() => { if (wait.querySelector('.ai-dots')) wait.insertAdjacentHTML('beforeend', '<div style="font-size:12px;color:#86868b;margin-top:6px">Lots of people are asking right now. Trying a faster model…</div>'); }, 7000);
     try {
       const r = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: msgs.slice(-10), lang, context: context() }) });
       let j = {}; try { j = await r.json(); } catch (e) {}
@@ -77,7 +78,7 @@
     } catch (e) {
       wait.classList.add('err'); wait.innerHTML = md(e.message.includes('fetch') ? 'Could not reach the tutor. Check your internet and try again.' : e.message); msgs.pop();
     }
-    busy = false; send.disabled = false; body.scrollTop = body.scrollHeight; suggestions(); ta.focus();
+    clearTimeout(slow); busy = false; send.disabled = false; body.scrollTop = body.scrollHeight; suggestions(); ta.focus();
   }
   function open(q) { p.classList.add('on'); fab.classList.add('hide'); greet(); suggestions(); if (q) ask(q); else setTimeout(() => ta.focus(), 200); }
   function close() { p.classList.remove('on'); fab.classList.remove('hide'); }

@@ -37,7 +37,7 @@ const LChart = (() => {
     function draw() {
       const c = cv.getContext('2d'), g = geom(); c.setTransform(g.dpr, 0, 0, g.dpr, 0, 0); c.clearRect(0, 0, g.W, g.H);
       let k = toCandles(S.raw); if (S.type === 'ha') k = heikin(k);
-      const total = k.length, n = Math.max(1, Math.min(total, S.n || total)); if (total < 2) return;
+      const total = k.length, n = Math.max(1, Math.min(total, S.n || total)); if (total < 1) return; // even a single forming candle is drawn
       const vis = k.slice(0, n), all = S.lockScale ? k : vis;
       let lo = Infinity, hi = -Infinity;
       const useHL = S.type === 'candle' || S.type === 'bar' || S.type === 'ha';

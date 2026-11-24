@@ -326,12 +326,14 @@ function pathAt(x, f) { // price of a forming candle at fraction f of its minute
   for (let i = 1; i < pts.length; i++) if (f <= pts[i][0]) { const [f0, p0] = pts[i - 1], [f1, p1] = pts[i], u = (f - f0) / (f1 - f0 || 1); return p0 + (p1 - p0) * u + (Math.sin(f * 40 + r() * 6) * (x.h - x.l) * 0.04); }
   return x.c;
 }
-function rpFrame(now) {
+// driven by a steady timer (not requestAnimationFrame) so real-time replay keeps its pace even if the tab loses focus
+function rpFrame() {
   if (!R.on) return;
+  const now = performance.now();
   if (R.playing) { R.tau += (now - R.last) * R.speed; }
   R.last = now;
   const total = R.k.length * 6e4; if (R.tau >= total) { R.tau = total; R.playing = false; $('#rpPlay').textContent = '↺'; }
-  if (now - R.drawn > (R.speed >= 30 ? 50 : 200)) {
+  {
     R.drawn = now;
     const i = Math.min(R.k.length - 1, Math.floor(R.tau / 6e4)), f = Math.min(1, (R.tau % 6e4) / 6e4), x = R.k[i];
     const done = R.tau >= total, out = R.k.slice(0, done ? R.k.length : i);
@@ -341,7 +343,6 @@ function rpFrame(now) {
     const chgD = (last.c / R.k[0].o - 1) * 100; $('#cChg').innerHTML = `<span class="${chgD >= 0 ? 'up' : 'down'}">${pct(chgD)}</span> <span class="small">since open</span>`;
     $('#rpClock').textContent = istTime(R.k[0].t + R.tau); $('#rpFill').style.width = (R.tau / total) * 100 + '%';
   }
-  requestAnimationFrame(rpFrame);
 }
 async function startReplay() {
   const sym = selInst || sel === 'NIFTY' ? '^NSEI' : ySym(sel);
@@ -355,17 +356,17 @@ async function startReplay() {
   if (!names.length) { toast('No past session data available right now', 'err'); $('#replay').textContent = '▶ Replay a past session'; return; }
   $('#rpDay').innerHTML = names.slice().reverse().map((d) => `<option>${d}</option>`).join('');
   R.on = true; $('#rpBar').hidden = false; $('#replay').hidden = true; $('#liveDot').textContent = '';
-  pickDay(names.at(-1)); R.last = performance.now(); requestAnimationFrame(rpFrame);
+  pickDay(names.at(-1)); R.last = performance.now(); clearInterval(R.timer); R.timer = setInterval(rpFrame, 150); rpFrame();
   toast('Replaying from the 9:15 am open at real speed. Change the speed on the right if you want it faster.');
 }
 function pickDay(d) { R.k = R.days[d]; R.tau = 0; R.playing = true; $('#rpPlay').textContent = '❚❚'; CH.set([], { slots: 375 }); }
-function stopReplay() { R.on = false; $('#rpBar').hidden = true; $('#replay').hidden = false; $('#replay').textContent = '▶ Replay a past session'; chartKey = ''; renderChartHead(); loadChart(); }
+function stopReplay() { R.on = false; clearInterval(R.timer); $('#rpBar').hidden = true; $('#replay').hidden = false; $('#replay').textContent = '▶ Replay a past session'; chartKey = ''; renderChartHead(); loadChart(); }
 $('#replay').onclick = () => (R.on ? stopReplay() : startReplay());
 $('#rpExit').onclick = stopReplay;
 $('#rpDay').onchange = () => pickDay($('#rpDay').value);
 $('#rpSpd').onchange = () => (R.speed = +$('#rpSpd').value);
 $('#rpPlay').onclick = () => { if (R.tau >= R.k.length * 6e4) R.tau = 0; R.playing = !R.playing; $('#rpPlay').textContent = R.playing ? '❚❚' : '▶'; };
-$('#rpTrack').onclick = (e) => { const r = $('#rpTrack').getBoundingClientRect(); R.tau = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * R.k.length * 6e4; R.drawn = 0; };
+$('#rpTrack').onclick = (e) => { const r = $('#rpTrack').getBoundingClientRect(); R.tau = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * R.k.length * 6e4; rpFrame(); };
 function renderChain() {
   if (spot == null) { $('#oc').innerHTML = '<tr><td class="empty">Waiting for Nifty price…</td></tr>'; return; }
   const exps = weeklyExpiries(4), cur = +$('#ocExp').value || exps[0];
@@ -594,7 +595,7 @@ window.AI_CONTEXT = () => {
     + (OW ? `The learner has an order window open: ${OW.side} ${instName(OW.inst)} product ${OW.product}. ` : '');
 };
 window.AI_SUGGEST = () => [selInst || sel === 'NIFTY' ? 'Explain what this option/future is in simple words' : `What does this ${sel} chart tell me?`, 'How do I read the option chain?', 'Explain my positions and P&L', 'What is the difference between CNC and MIS?'];
-L.loadAI();
+L.loadAI(); // also loads accounts, so the virtual portfolio syncs when signed in
 render(); refresh().then(loadChart);
 setInterval(refresh, 30000);
 setInterval(() => { if ($('#p-chain').classList.contains('on')) renderChain(); renderTop(); }, 15000);
