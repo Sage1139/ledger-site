@@ -31,6 +31,8 @@
   .ai-in button{width:44px;border-radius:14px;background:#00e38c;color:#000;font-weight:800;font-size:18px}
   .ai-in button[disabled]{opacity:.4}
   .ai-note{font-size:10.5px;color:#6e6e75;text-align:center;padding:0 14px 10px}
+  .ai-note a{color:#00e38c}
+  .ai-cta{display:inline-block;margin-top:10px;padding:9px 14px;border-radius:999px;background:#00e38c;color:#000!important;font-weight:700;font-size:13px}
   @media(max-width:600px){.ai-panel{right:8px;bottom:8px;left:8px;width:auto;height:calc(100vh - 90px)}.ai-fab{right:14px;bottom:14px;padding:12px 16px}}`;
   const st = document.createElement('style'); st.textContent = css; document.head.append(st);
 
@@ -61,6 +63,13 @@
   const DEFAULT_SUG = ['Explain this page in very simple words', 'What is the stock market?', 'What is SIP?', 'What is the difference between a share and a mutual fund?'];
   function suggestions() { const s = (typeof window.AI_SUGGEST === 'function' ? window.AI_SUGGEST() : null) || DEFAULT_SUG; sug.innerHTML = s.slice(0, 4).map((x) => `<button>${esc(x)}</button>`).join(''); }
   sug.onclick = (e) => { const b = e.target.closest('button'); if (b) ask(b.textContent); };
+  const me = () => !!(window.LAuth && LAuth.configured && LAuth.user);
+  const loginUrl = () => '/account/login.html?mode=up&next=' + encodeURIComponent(location.pathname + location.search);
+  function note() { // guests see a short taste; a free account unlocks full answers
+    const n = p.querySelector('.ai-note'), base = 'For learning only, not investment advice. Never share OTPs, passwords or bank details.';
+    n.innerHTML = window.LAuth && LAuth.configured && !LAuth.user ? `Guest mode: short answers only. <a href="${loginUrl()}">Sign in free</a> for full answers.<br>${base}` : base;
+  }
+  async function token() { try { if (me()) { const { data } = await LAuth.client.auth.getSession(); return (data.session && data.session.access_token) || ''; } } catch (e) {} return ''; }
   function greet() { if (body.children.length) return; bubble('assistant', lang === 'en' ? "Hi! 👋 I'm your tutor. Ask me anything about stocks, mutual funds, SIP or F&O. I can see which page you're on, so you can just say **\"explain this\"**." : 'Hi! 👋 Ask me anything. I\'ll reply in your chosen language.'); }
 
   async function ask(q) {
@@ -70,17 +79,19 @@
     const wait = bubble('assistant', ''); wait.innerHTML = '<span class="ai-dots"><span></span><span></span><span></span></span>';
     const slow = setTimeout(() => { if (wait.querySelector('.ai-dots')) wait.insertAdjacentHTML('beforeend', '<div style="font-size:12px;color:#86868b;margin-top:6px">Lots of people are asking right now. Trying a faster model…</div>'); }, 7000);
     try {
-      const r = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: msgs.slice(-10), lang, context: context() }) });
+      const tok = await token(), headers = { 'Content-Type': 'application/json' }; if (tok) headers.Authorization = 'Bearer ' + tok;
+      const r = await fetch('/api/ask', { method: 'POST', headers, body: JSON.stringify({ messages: msgs.slice(-10), lang, context: context() }) });
       let j = {}; try { j = await r.json(); } catch (e) {}
       if (r.status === 503 && j.error === 'not_configured') throw new Error("AURORA isn't switched on yet. The site owner needs to add a free API key. Meanwhile, the **?** buttons and lessons explain every concept.");
       if (!r.ok) throw new Error(j.error || 'Something went wrong. Please try again.');
       wait.innerHTML = md(j.reply); msgs.push({ role: 'assistant', content: j.reply });
+      if (j.signin) wait.insertAdjacentHTML('beforeend', `<div><a class="ai-cta" href="${loginUrl()}">🔓 Sign in free for the full answer</a></div>`);
     } catch (e) {
       wait.classList.add('err'); wait.innerHTML = md(e.message.includes('fetch') ? 'Could not reach the tutor. Check your internet and try again.' : e.message); msgs.pop();
     }
     clearTimeout(slow); busy = false; send.disabled = false; body.scrollTop = body.scrollHeight; suggestions(); ta.focus();
   }
-  function open(q) { p.classList.add('on'); fab.classList.add('hide'); greet(); suggestions(); if (q) ask(q); else setTimeout(() => ta.focus(), 200); }
+  function open(q) { p.classList.add('on'); fab.classList.add('hide'); note(); greet(); suggestions(); if (q) ask(q); else setTimeout(() => ta.focus(), 200); }
   function close() { p.classList.remove('on'); fab.classList.remove('hide'); }
   fab.onclick = () => open(); p.querySelector('.ai-x').onclick = close;
   send.onclick = () => ask();
