@@ -1,5 +1,5 @@
 // Vercel serverless function — the AI tutor.
-// Uses a FREE model tier. Set ONE of these in Vercel → Project → Settings → Environment Variables:
+// Uses a FREE model tier. Set one or both of these in Vercel (with both, Groq is the automatic backup when Gemini is busy) → Project → Settings → Environment Variables:
 //   GEMINI_API_KEY  (Google AI Studio, free tier)   optional GEMINI_MODEL to pin a model
 //   GROQ_API_KEY    (Groq, free tier)                optional GROQ_MODEL (default openai/gpt-oss-120b)
 // POST {messages:[{role:'user'|'assistant', content}], lang, context}  ->  {reply, signin, guest}
@@ -158,7 +158,9 @@ export default async function handler(req, res) {
   try {
     const system = SYSTEM(lang, context) + (guest ? GUEST : '');
     const max = guest ? 320 : undefined;
-    let reply = gk ? await askGemini(gk, system, messages, max) : await askGroq(qk, system, messages, max);
+    let reply;
+    try { reply = gk ? await askGemini(gk, system, messages, max) : await askGroq(qk, system, messages, max); }
+    catch (e) { if (gk && qk) reply = await askGroq(qk, system, messages, max); else throw e; } // Gemini busy? the backup (Groq) answers
     const signin = guest && /\[\[\s*SIGNIN\s*\]\]/i.test(reply || '');
     reply = (reply || '').replace(/\[\[\s*SIGNIN\s*\]\]/gi, '').trim();
     return res.status(200).json({ reply: reply || 'Sorry, I could not think of an answer. Try asking in a different way.', signin, guest });
