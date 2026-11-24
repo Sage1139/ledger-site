@@ -2,6 +2,13 @@
 const BRAND = 'LEDGER'; // change the site name here once, it updates every page
 const CONTACT_EMAIL = 'ledger.learn.admin@gmail.com'; // add your support email here; it appears on the Terms, Privacy and footer
 
+// Lessons need a free account. Until auth.js confirms who is signed in, hide the lesson pages for visitors with
+// no saved session (so they never see a flash of content before being sent to sign in). Safety net: show after 8s.
+const GATED = /^\/learn(\/|$)/.test(location.pathname);
+if (GATED) { let has = false; try { has = Object.keys(localStorage).some((k) => /^sb-.+-auth-token$/.test(k)); } catch (e) {}
+  if (!has) { document.documentElement.classList.add('gate'); setTimeout(() => document.documentElement.classList.remove('gate'), 8000); } }
+
+
 const L = (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
