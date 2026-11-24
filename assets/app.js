@@ -1,6 +1,6 @@
 /* ===== LEDGER shared script ===== */
 const BRAND = 'LEDGER'; // change the site name here once, it updates every page
-const CONTACT_EMAIL = ''; // add your support email here; it appears on the Terms, Privacy and footer
+const CONTACT_EMAIL = 'ledger.learn.admin@gmail.com'; // add your support email here; it appears on the Terms, Privacy and footer
 
 const L = (() => {
   const $ = (s, el = document) => el.querySelector(s);
