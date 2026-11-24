@@ -34,9 +34,9 @@
   @media(max-width:600px){.ai-panel{right:8px;bottom:8px;left:8px;width:auto;height:calc(100vh - 90px)}.ai-fab{right:14px;bottom:14px;padding:12px 16px}}`;
   const st = document.createElement('style'); st.textContent = css; document.head.append(st);
 
-  const fab = document.createElement('button'); fab.className = 'ai-fab'; fab.innerHTML = '✦ Ask AI'; fab.setAttribute('aria-label', 'Ask the AI tutor');
-  const p = document.createElement('div'); p.className = 'ai-panel'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'AI tutor');
-  p.innerHTML = `<div class="ai-hd"><span style="font-size:20px">✦</span><b>Your market tutor<small>Ask anything. Answers in your language.</small></b>
+  const fab = document.createElement('button'); fab.className = 'ai-fab'; fab.innerHTML = '✦ Ask AURORA'; fab.setAttribute('aria-label', 'Ask AURORA, the AI tutor');
+  const p = document.createElement('div'); p.className = 'ai-panel'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'AURORA AI tutor');
+  p.innerHTML = `<div class="ai-hd"><span style="font-size:20px">✦</span><b>AURORA<small>Your market tutor · answers in your language</small></b>
     <select aria-label="Language">${LANGS.map(([k, n]) => `<option value="${k}" ${k === lang ? 'selected' : ''}>${n}</option>`).join('')}</select><button class="ai-x" aria-label="Close">✕</button></div>
     <div class="ai-body"></div><div class="ai-sug"></div>
     <div class="ai-in"><textarea placeholder="Type your question… (any language)" rows="1"></textarea><button aria-label="Send">↑</button></div>
@@ -72,7 +72,7 @@
     try {
       const r = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: msgs.slice(-10), lang, context: context() }) });
       let j = {}; try { j = await r.json(); } catch (e) {}
-      if (r.status === 503 && j.error === 'not_configured') throw new Error("The AI tutor isn't switched on yet. The site owner needs to add a free API key. Meanwhile, the **?** buttons and lessons explain every concept.");
+      if (r.status === 503 && j.error === 'not_configured') throw new Error("AURORA isn't switched on yet. The site owner needs to add a free API key. Meanwhile, the **?** buttons and lessons explain every concept.");
       if (!r.ok) throw new Error(j.error || 'Something went wrong. Please try again.');
       wait.innerHTML = md(j.reply); msgs.push({ role: 'assistant', content: j.reply });
     } catch (e) {
