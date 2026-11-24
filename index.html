@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/assets/style.css" />
 <style>
-.hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;padding:80px 5vw 60px;overflow:hidden}
+.hero{margin-top:-76px;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;padding:80px 5vw 60px;overflow:hidden}
 #bgChart{position:absolute;inset:0;width:100%;height:100%;opacity:.5}
 .glow{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(0,227,140,.22),transparent 60%);filter:blur(40px);animation:float 10s ease-in-out infinite;pointer-events:none}
 @keyframes float{50%{transform:translate(60px,-40px) scale(1.1)}}
@@ -107,11 +107,39 @@ async function load() {
   catch (e) { L.$('#src').textContent = 'Demo feed: real prices appear on the live site'; q = [{name:'NIFTY 50',price:demo.at(-1),change:(demo.at(-1)/demo[0]-1)*100,series:demo}]; }
   L.$('#live').innerHTML = q.map(x => `<div>${x.name}<b>${L.num(x.price)}</b><span class="${x.change>=0?'up':'down'}">${x.change>=0?'▲':'▼'} ${Math.abs(x.change).toFixed(2)}%</span></div>`).join('');
   const n = q[0], col = n.change >= 0 ? '#00e38c' : '#ff453a';
-  L.line(L.$('#bgChart'), n.series, '#00e38c');
   L.line(L.$('#mChart'), n.series, col);
   L.$('#mPrice').textContent = L.num(n.price);
   L.$('#mChg').innerHTML = `<span class="${n.change>=0?'up':'down'}">${L.pct(n.change)}</span>`;
 }
+/* endless market line behind the hero: a random walk that never stops and never repeats.
+   Trend "moods" change at random, volatility breathes, and a pull toward the middle keeps it on screen. */
+(() => {
+  const cv = L.$('#bgChart'), c = cv.getContext('2d'), N = 220, pts = [];
+  let v = 0.5, mood = 0, moodLeft = 0, vol = 0.006, offset = 0, last = performance.now();
+  for (let i = 0; i < N; i++) pts.push(next());
+  function next() {
+    if (moodLeft-- <= 0) { mood = (Math.random() - 0.5) * 0.006; moodLeft = 30 + Math.random() * 120; vol = 0.004 + Math.random() * 0.01; }
+    const shock = Math.random() < 0.01 ? (Math.random() - 0.5) * 0.08 : 0;
+    v += mood + (Math.random() - 0.5) * vol * 2 + shock + (0.5 - v) * 0.01;
+    v = Math.max(0.08, Math.min(0.92, v)); return v;
+  }
+  function frame(t) {
+    const dt = Math.min(100, t - last); last = t;
+    if (!document.hidden) {
+      offset += dt / 90;                       // one new point roughly every 90 ms
+      while (offset >= 1) { pts.shift(); pts.push(next()); offset -= 1; }
+      const dpr = Math.min(2, devicePixelRatio || 1), w = (cv.width = cv.offsetWidth * dpr), h = (cv.height = cv.offsetHeight * dpr);
+      const X = (i) => ((i - offset) / (N - 2)) * w, Y = (p) => h * (1 - p) * 0.8 + h * 0.12;
+      const up = pts.at(-1) >= pts[pts.length - 40], col = up ? '#00e38c' : '#ff453a';
+      c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(X(i), Y(p)) : c.moveTo(X(i), Y(p))));
+      c.strokeStyle = col; c.lineWidth = 2.5 * dpr; c.shadowColor = col; c.shadowBlur = 18 * dpr; c.stroke(); c.shadowBlur = 0;
+      c.lineTo(X(N - 1), h); c.lineTo(X(0), h); const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, col + '30'); g.addColorStop(1, col + '00'); c.fillStyle = g; c.fill();
+      const lx = X(N - 1), ly = Y(pts.at(-1)); c.fillStyle = col; c.beginPath(); c.arc(lx - 2, ly, 4 * dpr, 0, 7); c.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(frame);
+})();
 load(); setInterval(load, 30000);
 addEventListener('resize', load);
 L.motion();

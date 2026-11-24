@@ -173,6 +173,9 @@ function draw() {
 }
 
 /* ---------- actions ---------- */
+window.AI_CONTEXT = () => !st ? `Mutual fund & SIP simulator. Learner is choosing a fund (selected: ${F.name}, ${F.type}).`
+  : `Mutual fund & SIP simulator (virtual money, real AMFI NAVs). Fund ${F.name} (${F.category || F.type}). Date ${fmtD(pts[idx].t)}, NAV ${inr(pts[idx].nav, 4)}. SIP ${st.sipOn ? inr(st.sip) + '/month' : 'stopped'}. Invested ${inr(st.invested)}, units ${num(units(), 3)}, value ${inr(units() * pts[idx].nav)}, bank ${inr(st.bank)}, redeemed ${inr(st.redeemed)}. Recent events: ${st.events.slice(0, 4).map((e) => e[1].replace(/<[^>]+>/g, '')).join(' | ')}`;
+window.AI_SUGGEST = () => ['Explain my SIP results simply', 'Why do I get more units when NAV falls?', 'What is exit load?', 'What is XIRR?'];
 function modal(h) { $('#modal').innerHTML = h; $('#ovl').classList.add('on'); }
 const close = () => $('#ovl').classList.remove('on');
 $('#ovl').onclick = (e) => { if (e.target.id === 'ovl') close(); };

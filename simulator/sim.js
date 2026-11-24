@@ -264,6 +264,7 @@ function renderWl() {
 }
 let selInst = null; // an F&O contract shown on the chart
 function renderChartHead() {
+  if (R.on) return; // replay controls the header while it runs
   const isIdx = sel === 'NIFTY', q = isIdx ? Q['^NSEI'] : Q[sel];
   if (selInst) {
     const px = price(selInst), p = parse(selInst);
@@ -279,8 +280,7 @@ function renderChartHead() {
     $('#cBuy').textContent = isIdx ? 'Buy future' : 'Buy'; $('#cSell').textContent = isIdx ? 'Sell future' : 'Sell';
   }
   const open = marketOpen() && !demo;
-  $('#liveDot').innerHTML = open ? '<span class="up">● Live</span> · refreshes every 30s' : 'Market closed: prices are frozen.';
-  $('#replay').style.display = open ? 'none' : '';
+  if (!R.on) $('#liveDot').innerHTML = open ? '<span class="up">● Live</span> · new candle every minute (data ~15 min delayed)' : 'Market closed: prices are frozen.';
   $('#dataBanner').innerHTML = demo ? '<div class="banner">Live data is unreachable right now, so you\'re seeing demo prices. Everything still works.</div>'
     : !marketOpen() ? `<div class="banner">${holidayToday() ? 'Today is an NSE trading holiday.' : 'The market is closed.'} Orders fill instantly at the last traded price so you can keep practising.</div>` : '';
   if (q) $('#cStats').innerHTML = [['Prev close', q.prevClose], ['Day high', q.dayHigh], ['Day low', q.dayLow], ['52W high', q.high52]].map(([l, v]) => `<div><span>${l}</span><b>${v != null ? num(v) : '—'}</b></div>`).join('');
@@ -313,14 +313,59 @@ async function loadChart(quiet) {
   }
 }
 function drawChart() { CH.redraw(); }
-$('#replay').onclick = () => {
-  if ($('#replay').dataset.on) { CH.stop(); delete $('#replay').dataset.on; $('#replay').textContent = '▶ Replay last session'; return; }
-  if (range !== '1d') { range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); }
-  $('#replay').dataset.on = 1; $('#replay').textContent = '■ Stop replay';
-  loadChart(true).then(() => CH.replay(25000));
-  toast('Replaying the last trading session, minute by minute, at high speed');
-};
-CH.onReplayEnd = () => { delete $('#replay').dataset.on; $('#replay').textContent = '▶ Replay last session'; };
+/* ---------- session replay at REAL speed ----------
+   Plays a past trading day from 9:15 am exactly as fast as it happened (1 one-minute candle per real minute).
+   The current candle "forms" smoothly inside its minute, like a live chart. Speed can be raised by the learner. */
+const R = { on: false, days: {}, k: [], tau: 0, speed: 1, playing: false, last: 0, drawn: 0 };
+const istDay = (t) => new Date(t).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' });
+const istTime = (t) => new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Kolkata' });
+function seeded(n) { let s = Math.floor(Math.abs(n * 1000)) % 2147483646 + 1; return () => ((s = (s * 16807) % 2147483647) / 2147483647); }
+function pathAt(x, f) { // price of a forming candle at fraction f of its minute: open → one extreme → the other → close
+  const r = seeded(x.o + x.c + x.t / 6e4), first = x.c >= x.o ? x.l : x.h, second = x.c >= x.o ? x.h : x.l;
+  const a = 0.2 + r() * 0.25, b = 0.55 + r() * 0.3, pts = [[0, x.o], [a, first], [b, second], [1, x.c]];
+  for (let i = 1; i < pts.length; i++) if (f <= pts[i][0]) { const [f0, p0] = pts[i - 1], [f1, p1] = pts[i], u = (f - f0) / (f1 - f0 || 1); return p0 + (p1 - p0) * u + (Math.sin(f * 40 + r() * 6) * (x.h - x.l) * 0.04); }
+  return x.c;
+}
+function rpFrame(now) {
+  if (!R.on) return;
+  if (R.playing) { R.tau += (now - R.last) * R.speed; }
+  R.last = now;
+  const total = R.k.length * 6e4; if (R.tau >= total) { R.tau = total; R.playing = false; $('#rpPlay').textContent = '↺'; }
+  if (now - R.drawn > (R.speed >= 30 ? 50 : 200)) {
+    R.drawn = now;
+    const i = Math.min(R.k.length - 1, Math.floor(R.tau / 6e4)), f = Math.min(1, (R.tau % 6e4) / 6e4), x = R.k[i];
+    const done = R.tau >= total, out = R.k.slice(0, done ? R.k.length : i);
+    if (!done) { let hi = x.o, lo = x.o; const steps = 12; for (let s = 0; s <= steps; s++) { const p = pathAt(x, (f * s) / steps); hi = Math.max(hi, p); lo = Math.min(lo, p); } const c = pathAt(x, f); out.push({ t: x.t, o: x.o, h: Math.max(hi, c), l: Math.min(lo, c), c }); }
+    CH.set(out, { slots: Math.max(375, R.k.length) });
+    const last = out.at(-1); $('#cLtp').textContent = num(last.c);
+    const chgD = (last.c / R.k[0].o - 1) * 100; $('#cChg').innerHTML = `<span class="${chgD >= 0 ? 'up' : 'down'}">${pct(chgD)}</span> <span class="small">since open</span>`;
+    $('#rpClock').textContent = istTime(R.k[0].t + R.tau); $('#rpFill').style.width = (R.tau / total) * 100 + '%';
+  }
+  requestAnimationFrame(rpFrame);
+}
+async function startReplay() {
+  const sym = selInst || sel === 'NIFTY' ? '^NSEI' : ySym(sel);
+  $('#replay').textContent = 'Loading sessions…';
+  let k;
+  try { k = (await L.quotes([sym], '5d', { candles: true, interval: '1m' })).quotes[0].candles; }
+  catch (e) { const s = L.walk(375 * 3, spot || 25000, 0.0012, 0, 5), t0 = Date.UTC(2026, 10, 18, 3, 45); k = s.map((c, i) => { const d = Math.floor(i / 375), m = i % 375, p = s[i - 1] || c; return { t: t0 + d * 864e5 + m * 6e4, o: p, h: Math.max(p, c) * 1.0003, l: Math.min(p, c) * 0.9997, c }; }); }
+  if (selInst) k = fnoCandles(k, selInst);
+  R.days = {}; k.forEach((x) => (R.days[istDay(x.t)] ||= []).push(x));
+  const names = Object.keys(R.days).filter((d) => R.days[d].length > 30);
+  if (!names.length) { toast('No past session data available right now', 'err'); $('#replay').textContent = '▶ Replay a past session'; return; }
+  $('#rpDay').innerHTML = names.slice().reverse().map((d) => `<option>${d}</option>`).join('');
+  R.on = true; $('#rpBar').hidden = false; $('#replay').hidden = true; $('#liveDot').textContent = '';
+  pickDay(names.at(-1)); R.last = performance.now(); requestAnimationFrame(rpFrame);
+  toast('Replaying from the 9:15 am open at real speed. Change the speed on the right if you want it faster.');
+}
+function pickDay(d) { R.k = R.days[d]; R.tau = 0; R.playing = true; $('#rpPlay').textContent = '❚❚'; CH.set([], { slots: 375 }); }
+function stopReplay() { R.on = false; $('#rpBar').hidden = true; $('#replay').hidden = false; $('#replay').textContent = '▶ Replay a past session'; chartKey = ''; renderChartHead(); loadChart(); }
+$('#replay').onclick = () => (R.on ? stopReplay() : startReplay());
+$('#rpExit').onclick = stopReplay;
+$('#rpDay').onchange = () => pickDay($('#rpDay').value);
+$('#rpSpd').onchange = () => (R.speed = +$('#rpSpd').value);
+$('#rpPlay').onclick = () => { if (R.tau >= R.k.length * 6e4) R.tau = 0; R.playing = !R.playing; $('#rpPlay').textContent = R.playing ? '❚❚' : '▶'; };
+$('#rpTrack').onclick = (e) => { const r = $('#rpTrack').getBoundingClientRect(); R.tau = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * R.k.length * 6e4; R.drawn = 0; };
 function renderChain() {
   if (spot == null) { $('#oc').innerHTML = '<tr><td class="empty">Waiting for Nifty price…</td></tr>'; return; }
   const exps = weeklyExpiries(4), cur = +$('#ocExp').value || exps[0];
@@ -393,7 +438,7 @@ function render(dataTick) {
   renderTop(); renderWl(); renderChartHead();
   if ($('#p-chain').classList.contains('on')) renderChain();
   renderOrders(); renderPositions(); renderHoldings(); renderFunds();
-  if (dataTick && range === '1d' && !$('#replay').dataset.on && (demo || marketOpen())) loadChart(true); // live: chart keeps moving
+  if (dataTick && range === '1d' && !R.on && (demo || marketOpen())) loadChart(true); // live: chart keeps moving
 }
 
 /* ---------- order window ---------- */
@@ -466,8 +511,8 @@ addEventListener('keydown', (e) => {
 });
 
 /* ---------- interactions ---------- */
-function selectInst(k) { selInst = k; sel = 'NIFTY'; tab('chart'); renderWl(); renderChartHead(); loadChart(); }
-function selectSym(s) { sel = s; selInst = null; range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); tab('chart'); renderWl(); renderChartHead(); loadChart(); $('#wl').classList.remove('on'); }
+function selectInst(k) { if (R.on) stopReplay(); selInst = k; sel = 'NIFTY'; tab('chart'); renderWl(); renderChartHead(); loadChart(); }
+function selectSym(s) { if (R.on) stopReplay(); sel = s; selInst = null; range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); tab('chart'); renderWl(); renderChartHead(); loadChart(); $('#wl').classList.remove('on'); }
 function tab(t) { $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'chain') renderChain(); if (t === 'chart') setTimeout(drawChart, 0); }
 $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 $('#list').onclick = (e) => {
@@ -539,6 +584,17 @@ document.addEventListener('click', (e) => { if (!e.target.closest('.search')) $(
 /* ---------- boot ---------- */
 $$('[data-brand]').forEach((e) => (e.textContent = BRAND)); document.title = document.title.replace(/LEDGER/g, BRAND);
 const want = new URLSearchParams(location.search).get('tab'); if (want) tab(want);
+/* AI tutor sees what the learner is looking at */
+window.AI_CONTEXT = () => {
+  const a = account(), cur = $$('#tabs button').find((b) => b.classList.contains('on')).dataset.t;
+  const pos = Object.values(S.positions).filter((p) => p.qty).map((p) => `${instName(p.inst)} qty ${p.qty} avg ${num(p.avg)} now ${num(price(p.inst) ?? 0)}`).join('; ');
+  const hold = Object.entries(S.holdings).map(([s, h]) => `${s} ${h.qty} @ ${num(h.avg)}`).join('; ');
+  return `Page: LEDGER live trading terminal (virtual money). Open tab: ${cur}. Chart shows: ${selInst ? instName(selInst) : sel}${R.on ? ' (replaying a past session)' : ''}. Nifty spot ${spot ? num(spot) : 'n/a'}. Market ${marketOpen() ? 'open' : 'closed'}. `
+    + `Virtual account: available ${inr(a.available)}, used margin ${inr(a.used)}. Holdings: ${hold || 'none'}. Open positions: ${pos || 'none'}. `
+    + (OW ? `The learner has an order window open: ${OW.side} ${instName(OW.inst)} product ${OW.product}. ` : '');
+};
+window.AI_SUGGEST = () => [selInst || sel === 'NIFTY' ? 'Explain what this option/future is in simple words' : `What does this ${sel} chart tell me?`, 'How do I read the option chain?', 'Explain my positions and P&L', 'What is the difference between CNC and MIS?'];
+L.loadAI();
 render(); refresh().then(loadChart);
 setInterval(refresh, 30000);
 setInterval(() => { if ($('#p-chain').classList.contains('on')) renderChain(); renderTop(); }, 15000);

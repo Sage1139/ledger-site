@@ -46,8 +46,9 @@ const LChart = (() => {
       if (hi === lo) { hi += 1; lo -= 1; }
       const padV = (hi - lo) * 0.08, wasPos = lo >= 0; lo -= padV; hi += padV; if (wasPos && lo < 0) lo = 0;
       const pw = g.W - g.padR, ph = g.H - g.padB - g.padT;
-      const X = (i) => (total === 1 ? pw / 2 : (i / (total - 1)) * (pw - 8) + 4), Y = (v) => g.padT + (1 - (v - lo) / (hi - lo)) * ph;
-      S.g = { X, Y, total, n, pw, ph, lo, hi, k, ...g };
+      const slots = Math.max(total, S.slots || 0); // fixed time axis (e.g. a full 9:15–3:30 session) so the chart fills left→right like a live day
+      const X = (i) => (slots === 1 ? pw / 2 : (i / (slots - 1)) * (pw - 8) + 4), Y = (v) => g.padT + (1 - (v - lo) / (hi - lo)) * ph;
+      S.g = { X, Y, total, slots, n, pw, ph, lo, hi, k, ...g };
       // grid + price labels
       c.font = '11px "JetBrains Mono", monospace'; c.textAlign = 'left'; c.textBaseline = 'middle';
       for (let i = 0; i <= 4; i++) {
@@ -57,8 +58,8 @@ const LChart = (() => {
       }
       // time labels
       if (k[0].t && k[total - 1].t) {
-        const span = k[total - 1].t - k[0].t; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-        for (let i = 0; i < 4; i++) { const idx = Math.round(((total - 1) * (i + 0.5)) / 4); c.fillStyle = TXT; c.fillText((S.xfmt || defX)(k[idx].t, span), X(idx), g.H - 6); }
+        const step = total > 1 ? (k[total - 1].t - k[0].t) / (total - 1) : 6e4, span = step * (slots - 1); c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+        for (let i = 0; i < 4; i++) { const idx = Math.round(((slots - 1) * (i + 0.5)) / 4), t = idx < total ? k[idx].t : k[0].t + idx * step; c.fillStyle = TXT; c.fillText((S.xfmt || defX)(t, span), X(idx), g.H - 6); }
       }
       const up = vis[n - 1].c >= vis[0].o;
       const col = opts.color || (up ? GREEN : RED);
@@ -70,7 +71,7 @@ const LChart = (() => {
         const lx = X(n - 1), ly = Y(vis[n - 1].c); c.fillStyle = col; c.beginPath(); c.arc(lx, ly, 3.5, 0, 7); c.fill();
         c.globalAlpha = 0.25 + 0.2 * Math.sin(performance.now() / 300); c.beginPath(); c.arc(lx, ly, 8, 0, 7); c.fill(); c.globalAlpha = 1;
       } else {
-        const bw = Math.max(1, Math.min(14, ((pw - 8) / total) * 0.7));
+        const bw = Math.max(1, Math.min(14, ((pw - 8) / slots) * 0.7));
         vis.forEach((x, i) => {
           const cx = X(i), isUp = x.c >= x.o, cc = isUp ? GREEN : RED; c.strokeStyle = cc; c.fillStyle = cc; c.lineWidth = 1;
           if (S.type === 'bar') { c.beginPath(); c.moveTo(cx, Y(x.h)); c.lineTo(cx, Y(x.l)); c.moveTo(cx - bw / 2, Y(x.o)); c.lineTo(cx, Y(x.o)); c.moveTo(cx, Y(x.c)); c.lineTo(cx + bw / 2, Y(x.c)); c.stroke(); }
@@ -98,14 +99,14 @@ const LChart = (() => {
       const step = (t) => { if (id !== S.anim) return; const p = Math.min(1, (t - t0) / ms); S.n = Math.max(2, Math.ceil(total * (ms > 3000 ? p : 1 - Math.pow(1 - p, 3)))); draw(); if (p < 1) requestAnimationFrame(step); else { S.n = 0; S.lockScale = false; draw(); api.onReplayEnd && api.onReplayEnd(); } };
       requestAnimationFrame(step);
     }
-    cv.addEventListener('mousemove', (e) => { if (!S.g) return; const r = cv.getBoundingClientRect(), i = Math.round(((e.clientX - r.left - 4) / (S.g.pw - 8)) * (S.g.total - 1)); S.hover = Math.max(0, Math.min(S.g.total - 1, i)); draw(); });
+    cv.addEventListener('mousemove', (e) => { if (!S.g) return; const r = cv.getBoundingClientRect(), i = Math.round(((e.clientX - r.left - 4) / (S.g.pw - 8)) * (S.g.slots - 1)); S.hover = Math.max(0, Math.min(S.g.n - 1, i)); draw(); });
     cv.addEventListener('mouseleave', () => { S.hover = null; draw(); });
     cv.addEventListener('touchmove', (e) => { const t = e.touches[0]; cv.dispatchEvent(new MouseEvent('mousemove', { clientX: t.clientX, clientY: t.clientY })); }, { passive: true });
     new ResizeObserver(() => draw()).observe(wrap);
     let seen = false; const io = new IntersectionObserver((es) => { if (es[0].isIntersecting && !seen) { seen = true; if (S.pendingAnim && S.raw.length > 2) animateTo(S.raw.length, 900); else draw(); } }, { threshold: 0.2 }); io.observe(wrap);
     loop();
     const api = {
-      set(data, o = {}) { S.raw = data || []; S.markers = o.markers || S.markers; if (o.overlays) S.overlays = o.overlays; if (o.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) { if (seen) animateTo(S.raw.length, 900); else S.pendingAnim = true; } else { S.n = 0; draw(); } },
+      set(data, o = {}) { S.raw = data || []; S.markers = o.markers || S.markers; S.slots = o.slots || 0; if (o.overlays) S.overlays = o.overlays; if (o.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) { if (seen) animateTo(S.raw.length, 900); else S.pendingAnim = true; } else { S.n = 0; draw(); } },
       type(t) { S.type = t; draw(); },
       overlays(o) { S.overlays = o; draw(); },
       replay(ms = 20000) { S.lockScale = true; animateTo(S.raw.length, ms); },

@@ -4,9 +4,10 @@ const DEFAULT = ['^NSEI', '^NSEBANK', '^BSESN'];
 const NAMES = { '^NSEI': 'NIFTY 50', '^NSEBANK': 'BANKNIFTY', '^BSESN': 'SENSEX' };
 const RANGES = { '1d': '1m', '5d': '5m', '1mo': '30m', '6mo': '1d', '1y': '1d', '2y': '1d', '5y': '1wk', '10y': '1mo' };
 const OK = /^[\^A-Z0-9&.\-]{1,24}$/;
+const INTERVALS = ['1m', '2m', '5m', '15m', '30m', '1h', '1d', '1wk', '1mo'];
 
-async function getQuote(symbol, range, withCandles, withDiv) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${RANGES[range]}&range=${range}${withDiv ? '&events=div' : ''}`;
+async function getQuote(symbol, range, withCandles, withDiv, interval) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval || RANGES[range]}&range=${range}${withDiv ? '&events=div' : ''}`;
   const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!r.ok) throw new Error(`${symbol}: HTTP ${r.status}`);
   const j = await r.json();
@@ -42,7 +43,8 @@ export default async function handler(req, res) {
   let symbols = q.symbols ? String(q.symbols).toUpperCase().split(',').map((s) => s.trim()).filter(Boolean) : DEFAULT;
   symbols = [...new Set(symbols)].filter((s) => OK.test(s)).slice(0, 30);
   if (!symbols.length) return res.status(400).json({ error: 'No valid symbols' });
-  const settled = await Promise.allSettled(symbols.map((s) => getQuote(s, range, q.candles === '1', q.div === '1')));
+  const interval = INTERVALS.includes(q.interval) ? q.interval : null; // e.g. range=5d&interval=1m for session replays
+  const settled = await Promise.allSettled(symbols.map((s) => getQuote(s, range, q.candles === '1', q.div === '1', interval)));
   const quotes = settled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
   const failed = symbols.filter((_, i) => settled[i].status === 'rejected');
   if (!quotes.length) return res.status(502).json({ error: 'Market data unavailable', failed });

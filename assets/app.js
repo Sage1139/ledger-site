@@ -29,8 +29,18 @@ const L = (() => {
     nav.innerHTML = `<a class="logo" href="${root || './'}">${BRAND}</a>
       <ul>${links.map(([k, h, t]) => `<li><a href="${h}" class="${k === active ? 'on' : ''}">${t}</a></li>`).join('')}</ul>
       <div class="row"><a class="pill" href="/simulator/">Simulators</a><button class="menu" aria-label="Menu">☰</button></div>`;
-    document.body.prepend(nav);
+    document.body.prepend(nav); document.body.classList.add('has-nav');
     $('.menu', nav).onclick = () => $('ul', nav).classList.toggle('open');
+    let lastY = scrollY;
+    const onScroll = () => {
+      const y = scrollY, menuOpen = $('ul', nav).classList.contains('open');
+      nav.classList.toggle('solid', y > 10);
+      nav.classList.toggle('hide', y > 120 && y > lastY + 2 && !menuOpen);
+      if (y < lastY - 2 || y < 120) nav.classList.remove('hide');
+      lastY = y;
+    };
+    addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    loadAI();
     const f = document.createElement('footer');
     f.className = 'foot-main';
     f.innerHTML = `${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
@@ -38,6 +48,8 @@ const L = (() => {
     document.title = document.title.replace(/LEDGER/g, BRAND);
     $$('[data-brand]').forEach((e) => (e.textContent = BRAND));
   }
+
+  function loadAI() { if (window.__aiLoaded) return; window.__aiLoaded = 1; const s = document.createElement('script'); s.src = '/assets/ai.js'; s.defer = true; document.body.append(s); }
 
   /* --- scroll reveal + reading progress --- */
   function motion() {
@@ -131,7 +143,7 @@ const L = (() => {
 
   /* --- market data --- */
   async function quotes(symbols, range, o = {}) {
-    const url = '/api/quote?symbols=' + encodeURIComponent(symbols.join(',')) + (range ? '&range=' + range : '') + (o.candles ? '&candles=1' : '') + (o.div ? '&div=1' : '');
+    const url = '/api/quote?symbols=' + encodeURIComponent(symbols.join(',')) + (range ? '&range=' + range : '') + (o.candles ? '&candles=1' : '') + (o.div ? '&div=1' : '') + (o.interval ? '&interval=' + o.interval : '');
     const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) throw new Error('feed ' + r.status);
     return r.json();
@@ -176,5 +188,5 @@ const L = (() => {
 
   const lakh = (n) => { const a = Math.abs(n), s = n < 0 ? '-₹' : '₹'; return a >= 1e7 ? s + (a / 1e7).toFixed(2) + ' Cr' : a >= 1e5 ? s + (a / 1e5).toFixed(2) + ' L' : inr(n); };
 
-  return { $, $$, inr, num, pct, lakh, store, chrome, motion, line, quiz, quotes, mf, toast, walk, bs, delta };
+  return { $, $$, inr, num, pct, lakh, store, chrome, loadAI, motion, line, quiz, quotes, mf, toast, walk, bs, delta };
 })();

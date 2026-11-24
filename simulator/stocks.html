@@ -203,6 +203,9 @@ $('#start').onclick = async () => {
   buy(amt); $('#start').textContent = 'Restart with new choices'; $('#hint').textContent = 'Press ▶ to let time pass. Pause anytime to buy more or sell.';
   setTimeout(play, 900);
 };
+window.AI_CONTEXT = () => !st || !D ? `Stocks time-machine simulator. Learner is choosing a company (selected: ${sym}, going back ${range}).`
+  : `Stocks time-machine simulator (virtual money, real historical prices). Company ${sym}. Replay date ${fmtD(D.k[idx].t)}, price ${inr(D.k[idx].c, 2)}. Bank ${inr(st.bank)}, shares held ${shares()} (avg cost ${shares() ? inr(cost() / shares(), 2) : '-'}), dividends received ${inr(st.divs)}, invested ${inr(st.invested)}, tax due ${inr(st.tax)}. Recent events: ${st.events.slice(0, 4).map((e) => e[1].replace(/<[^>]+>/g, '')).join(' | ')}`;
+window.AI_SUGGEST = () => ['Explain what just happened to my money', 'Why did the price fall/rise here?', 'What is a dividend and why did I get it?', 'How is tax calculated when I sell?'];
 function modal(html) { $('#modal').innerHTML = html; $('#ovl').classList.add('on'); }
 $('#ovl').onclick = (e) => { if (e.target.id === 'ovl') $('#ovl').classList.remove('on'); };
 $('#buyMore').onclick = () => { pause(); const p = D.k[idx].c;
