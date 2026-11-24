@@ -34,15 +34,21 @@ let sel = 'NIFTY', range = '1d';
 /* ---------- time & expiry (IST) ---------- */
 const IST = 5.5 * 3600e3;
 const istNow = () => new Date(Date.now() + IST); // read with getUTC*
+// NSE trading holidays (weekdays) from the official 2026 circular. Add next year's list when NSE publishes it.
+const HOLIDAYS = new Set(['2026-01-26','2026-03-03','2026-03-26','2026-03-31','2026-04-03','2026-04-14','2026-05-01','2026-05-28','2026-06-26','2026-09-14','2026-10-02','2026-10-20','2026-11-10','2026-11-24','2026-12-25']);
+const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+const tradingDay = (t) => { const wd = new Date(t).getUTCDay(); return wd >= 1 && wd <= 5 && !HOLIDAYS.has(ymd(t)); };
+function holidayToday() { const d = istNow(); return HOLIDAYS.has(ymd(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))); }
 function marketOpen() {
-  const d = istNow(), wd = d.getUTCDay(), m = d.getUTCHours() * 60 + d.getUTCMinutes();
-  return wd >= 1 && wd <= 5 && m >= 555 && m < 930;
+  const d = istNow(), m = d.getUTCHours() * 60 + d.getUTCMinutes();
+  return tradingDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) && m >= 555 && m < 930;
 }
-function expiryAt(y, mo, d) { return Date.UTC(y, mo, d, 10, 0); } // 15:30 IST = 10:00 UTC
+// expiry falls back to the previous trading day when the Tuesday is a holiday
+function shiftBack(t) { while (!tradingDay(t)) t -= 864e5; return Date.UTC(new Date(t).getUTCFullYear(), new Date(t).getUTCMonth(), new Date(t).getUTCDate(), 10, 0); } // 15:30 IST = 10:00 UTC
 function weeklyExpiries(n = 4) {
-  const out = []; const d = istNow(); let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const out = []; const d = istNow(); let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 7 * 864e5;
   while (out.length < n) {
-    const day = new Date(t); if (day.getUTCDay() === 2) { const e = expiryAt(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()); if (e > Date.now()) out.push(e); }
+    if (new Date(t).getUTCDay() === 2) { const e = shiftBack(t); if (e > Date.now() && !out.includes(e)) out.push(e); }
     t += 864e5;
   }
   return out;
@@ -50,8 +56,8 @@ function weeklyExpiries(n = 4) {
 function monthlyExpiry() {
   const d = istNow(); let y = d.getUTCFullYear(), m = d.getUTCMonth();
   for (let k = 0; k < 3; k++) {
-    let last = new Date(Date.UTC(y, m + 1, 0)); while (last.getUTCDay() !== 2) last = new Date(last - 864e5);
-    const e = expiryAt(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate()); if (e > Date.now()) return e;
+    let last = Date.UTC(y, m + 1, 0); while (new Date(last).getUTCDay() !== 2) last -= 864e5;
+    const e = shiftBack(last); if (e > Date.now()) return e;
     m++; if (m > 11) { m = 0; y++; }
   }
 }
@@ -242,7 +248,7 @@ function demoTick(eq) { // offline fallback so the terminal still works when the
 function chg(c) { return c == null ? '' : `<span class="${c >= 0 ? 'up' : 'down'}">${pct(c)}</span>`; }
 function renderTop() {
   $('#idx').innerHTML = INDEX.map(([s, n]) => Q[s] ? `<div>${n}<b>${num(Q[s].price)}</b>${chg(Q[s].change)}</div>` : '').join('');
-  const open = marketOpen(); $('#mkt').textContent = demo ? 'DEMO PRICES' : open ? '● MARKET OPEN' : 'MARKET CLOSED'; $('#mkt').className = 'mkt ' + (open && !demo ? 'open' : '');
+  const open = marketOpen(); $('#mkt').textContent = demo ? 'DEMO PRICES' : open ? '● MARKET OPEN' : holidayToday() ? 'MARKET HOLIDAY' : 'MARKET CLOSED'; $('#mkt').className = 'mkt ' + (open && !demo ? 'open' : '');
   $('#fTop').textContent = inr(account().available);
 }
 function renderWl() {
@@ -264,7 +270,7 @@ function renderChartHead() {
   $('#cChg').innerHTML = q ? chg(q.change) + ` <span class="small">today</span>` : '';
   $('#cBuy').textContent = isIdx ? 'Buy future' : 'Buy'; $('#cSell').textContent = isIdx ? 'Sell future' : 'Sell';
   $('#dataBanner').innerHTML = demo ? '<div class="banner">Live data is unreachable right now, so you\'re seeing demo prices. Everything still works.</div>'
-    : !marketOpen() ? '<div class="banner">The market is closed. Orders fill instantly at the last traded price so you can keep practising.</div>' : '';
+    : !marketOpen() ? `<div class="banner">${holidayToday() ? 'Today is an NSE trading holiday.' : 'The market is closed.'} Orders fill instantly at the last traded price so you can keep practising.</div>` : '';
   if (q) $('#cStats').innerHTML = [['Prev close', q.prevClose], ['Day high', q.dayHigh], ['Day low', q.dayLow], ['52W high', q.high52]].map(([l, v]) => `<div><span>${l}</span><b>${v != null ? num(v) : '—'}</b></div>`).join('');
 }
 let chartData = [], chartReq = 0;
