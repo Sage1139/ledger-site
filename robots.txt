@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /account/
+
+Sitemap: https://ledger-site-tau.vercel.app/sitemap.xml
