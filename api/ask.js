@@ -37,32 +37,47 @@ function limited(ip) {
   return arr.length > 20;
 }
 
-let geminiModel = null;
-async function pickGeminiModel(key) {
-  if (process.env.GEMINI_MODEL) return process.env.GEMINI_MODEL;
-  if (geminiModel) return geminiModel;
+// Free models get busy. We keep a ranked list of usable Flash models and fall back down it when one is overloaded.
+let geminiModels = null;
+async function geminiCandidates(key) {
+  if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
+  if (geminiModels) return geminiModels;
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
   const j = await r.json();
   const names = (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace('models/', ''));
-  const score = (n) => { const v = parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0); return v * 10 + (/flash/.test(n) ? 5 : 0) - (/lite/.test(n) ? 2 : 0) - (/preview|exp|thinking|image|tts|audio|live|embedding/.test(n) ? 20 : 0); };
-  if (names.includes('gemini-flash-latest')) return (geminiModel = 'gemini-flash-latest'); // Google's always-current Flash alias
-  geminiModel = names.filter((n) => /^gemini-.*flash/.test(n)).sort((a, b) => score(b) - score(a))[0] || 'gemini-flash-latest';
-  return geminiModel;
+  const bad = /image|tts|audio|live|embedding|thinking|computer|robotics|native/;
+  const score = (n) => { const v = parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0); return v * 10 - (/lite/.test(n) ? 3 : 0) - (/preview|exp/.test(n) ? 4 : 0); };
+  const flash = names.filter((n) => /^gemini-.*flash/.test(n) && !bad.test(n) && !/latest/.test(n)).sort((a, b) => score(b) - score(a));
+  const aliases = ['gemini-flash-latest', 'gemini-flash-lite-latest'].filter((a) => names.includes(a));
+  geminiModels = [...new Set([...aliases.slice(0, 1), ...flash.slice(0, 4), ...aliases.slice(1)])].slice(0, 5);
+  if (!geminiModels.length) geminiModels = ['gemini-flash-latest'];
+  return geminiModels;
 }
 
 async function askGemini(key, system, messages) {
-  const model = await pickGeminiModel(key);
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-      generationConfig: { temperature: 0.5, maxOutputTokens: 900 },
-    }),
-  });
-  const j = await r.json();
-  if (!r.ok) { if (r.status === 404) geminiModel = null; throw new Error((j.error && j.error.message) || 'Gemini error ' + r.status); }
-  return (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts || []).map((p) => p.text || '').join('').trim();
+  const models = await geminiCandidates(key);
+  let lastErr;
+  for (const model of models) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        generationConfig: { temperature: 0.5, maxOutputTokens: 1200 },
+      }),
+    });
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    if (r.ok) {
+      const text = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || '').join('').trim();
+      if (text) return text;
+      lastErr = new Error('empty reply from ' + model); continue;
+    }
+    lastErr = new Error(`${model}: ${(j.error && j.error.message) || r.status}`);
+    if (r.status === 401 || r.status === 403) throw lastErr; // bad key: no point trying other models
+    if (r.status === 404) geminiModels = null;               // model list changed: refresh next time
+    // 429 (quota) / 500 / 503 (overloaded): try the next model
+  }
+  throw lastErr || new Error('No Gemini model available');
 }
 
 async function askGroq(key, system, messages) {
