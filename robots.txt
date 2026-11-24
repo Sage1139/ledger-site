@@ -1,3 +1,4 @@
+# LEDGER: lessons and simulators are open to search engines; accounts and the API are not.
 User-agent: *
 Allow: /
 Disallow: /api/
