@@ -44,7 +44,7 @@
   <div class="kicker">Real market. Fake money.</div>
   <h1>Master the<br/><span class="grad">market.</span></h1>
   <p class="sub">Learn stocks, mutual funds, SIPs and F&amp;O from absolute zero. Then trade real Nifty prices with ₹10 lakh of virtual cash. Every win is real learning. Every loss costs nothing.</p>
-  <div class="cta"><a class="pill" href="/learn/">Start learning free</a><a class="ghost" href="/simulator/">Open the simulator</a></div>
+  <div class="cta"><a class="pill" href="/learn/">Start learning free</a><a class="ghost" href="/simulator/">Open the simulators</a></div>
   <div class="live mono" id="live"></div>
   <div class="src mono" id="src">Connecting to market…</div>
 </header>
@@ -54,8 +54,8 @@
 <section class="section">
   <div class="wrap">
     <div class="kicker reveal">The masterclass</div>
-    <h2 class="big reveal">Zero to trader.<br/><span class="grad">Five lessons.</span></h2>
-    <p class="lead reveal" style="margin-bottom:50px">Each lesson is hands-on: you move sliders, place pretend orders, and answer questions before you move on.</p>
+    <h2 class="big reveal">Zero to trader.<br/><span class="grad">Four levels.</span></h2>
+    <p class="lead reveal" style="margin-bottom:50px">23 short lessons in plain language. Start from zero or jump straight to what you need. Every lesson has something to try with your own hands.</p>
     <div class="grid3" id="tiles"></div>
   </div>
 </section>
@@ -67,7 +67,7 @@
         <div class="kicker">The simulator</div>
         <h2 class="big" style="font-size:clamp(34px,4vw,56px)">A real trading terminal.<br/>Pretend money.</h2>
         <p class="lead" style="font-size:17px">Watchlist, charts, buy and sell orders, holdings, positions, an option chain and Nifty futures, all running on real market prices.</p>
-        <div class="cta" style="justify-content:flex-start"><a class="pill green" href="/simulator/">Get ₹10,00,000 virtual</a></div>
+        <div class="cta" style="justify-content:flex-start"><a class="pill green" href="/simulator/trade.html">Get ₹10,00,000 virtual</a></div>
       </div>
       <div class="mock">
         <div class="row" style="justify-content:space-between"><div><div class="small">NIFTY 50</div><div class="mono" style="font-size:28px;font-weight:600" id="mPrice">—</div></div><div class="mono" id="mChg"></div></div>
@@ -80,16 +80,15 @@
 <script src="/assets/app.js"></script>
 <script>
 L.chrome('');
-const LESSONS = [
-  ['01','Foundations','How the market works','What a stock exchange is, why prices move, and what really happens when you press Buy.','/learn/market.html','market'],
-  ['02','Foundations','SEBI & your accounts','Who protects you, what a demat account is, and how to spot a scam.','/learn/sebi.html','sebi'],
-  ['03','Investor','Stocks','What you actually own, how you earn returns, and how to read a company.','/learn/stocks.html','stocks'],
-  ['04','Investor','Mutual funds & SIP','Baskets of stocks, NAV, and how ₹5,000 a month can become lakhs.','/learn/mutual-funds.html','mf'],
-  ['05','Trader','Futures & options','Calls, puts, lots, leverage and expiry, practised with zero risk.','/learn/fno.html','fno'],
+const LV = [
+  ['1','Absolute basics','Never invested? Start here','Why money should grow, what a share is, the stock market, SEBI and your 3 accounts. Explained like you\'re new to all of it.','basics'],
+  ['2','Beginner','Your first investments','Buying your first share step by step, why prices move, returns, Nifty, mutual funds, SIP and risk.','beginner'],
+  ['3','Intermediate','Read the market','Order books, P/E, choosing funds, candlestick charts, taxes and charges.','intermediate'],
+  ['4','Advanced','Futures & options, slowly','Lots, leverage, calls and puts, the option chain, time decay, and why most traders lose.','advanced'],
 ];
-const done = L.store.get('ledger.done', {});
-L.$('#tiles').innerHTML = LESSONS.map(([n,l,t,d,h,k]) => `<a class="glass tile reveal" href="${h}"><div class="n">${n}</div><div class="lvl">${l.toUpperCase()}${done[k] ? ' · <span class="up">DONE ✓</span>' : ''}</div><div><h3>${t}</h3><p>${d}</p><div class="go grad">Start lesson →</div></div></a>`).join('')
- + `<a class="glass tile reveal" href="/simulator/" style="border-color:rgba(0,227,140,.3)"><div class="n">→</div><div class="lvl">PRACTICE</div><div><h3>Open the simulator</h3><p>Done learning? Trade stocks, futures and options on real prices.</p><div class="go grad">Open terminal →</div></div></a>`;
+L.$('#tiles').innerHTML = LV.map(([n,l,t,d,k]) => `<a class="glass tile reveal" href="/learn/" onclick="try{localStorage.setItem('ledger.level',JSON.stringify('${k}'))}catch(e){}"><div class="n">0${n}</div><div class="lvl">LEVEL ${n} · ${l.toUpperCase()}</div><div><h3>${t}</h3><p>${d}</p><div class="go grad">Open level →</div></div></a>`).join('')
+ + `<a class="glass tile reveal" href="/simulator/stocks.html"><div class="n">📈</div><div class="lvl">PRACTICE</div><div><h3>Stocks &amp; SIP time machines</h3><p>Buy a real stock or start a SIP years ago, and watch your money grow, month by month.</p><div class="go grad">Open simulators →</div></div></a>`
+ + `<a class="glass tile reveal" href="/simulator/trade.html" style="border-color:rgba(0,227,140,.3)"><div class="n">⚡</div><div class="lvl">PRACTICE</div><div><h3>Live trading terminal</h3><p>Trade stocks, futures and options on today's real prices.</p><div class="go grad">Open terminal →</div></div></a>`;
 
 // words light up as you scroll
 const st = L.$('#stmt');

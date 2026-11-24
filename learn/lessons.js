@@ -1,0 +1,196 @@
+/* ===== LEDGER lessons =====
+   Every card: h = headline, t = text (HTML), w = interactive widget, q = quick check, word = [new word, plain meaning]
+   Rule for writers: one idea per card, short sentences, an everyday example before any jargon. */
+const LEVELS = [
+  { id: 'basics', name: 'Absolute basics', tag: 'Start here if you know nothing', color: '#00e38c' },
+  { id: 'beginner', name: 'Beginner', tag: 'Your first investments', color: '#00b3ff' },
+  { id: 'intermediate', name: 'Intermediate', tag: 'Read the market like a pro', color: '#ffb340' },
+  { id: 'advanced', name: 'Advanced: F&O', tag: 'Futures and options, slowly', color: '#ff453a' },
+];
+
+const LESSONS = [
+/* ---------------- ABSOLUTE BASICS ---------------- */
+{ id: 'why-invest', level: 'basics', title: 'Why should money grow?', mins: 4, cards: [
+  { h: 'Imagine a ₹10 samosa.', t: 'Ten years ago, a samosa cost maybe ₹5. Today it\'s around ₹10 or more.<br><br>The samosa didn\'t get bigger. <b>Your rupee got weaker.</b>' },
+  { h: 'This is called inflation.', t: 'Prices of things slowly go up every year. In India, roughly <b>4–6% a year</b> on average.<br><br>So money kept in a cupboard actually <b>loses value</b> over time, even though the number stays the same.', word: ['Inflation', 'Prices going up over time, so the same money buys less.'] },
+  { h: 'See it happen.', t: 'Drag the slider. Watch how much ₹1,00,000 in a cupboard can really buy after some years.', w: 'inflation' },
+  { h: 'So what do people do?', t: 'They put money somewhere it can <b>grow faster than prices rise</b>. That\'s called <b>investing</b>.<br><br>A savings account grows a little. A fixed deposit grows a bit more. Owning parts of businesses (shares) has historically grown the most over long periods, but with ups and downs.', word: ['Investing', 'Putting money into something so it grows over time.'] },
+  { h: 'Saving vs investing.', t: '<b>Saving</b> = keeping money safe. Good for emergencies.<br><b>Investing</b> = letting money work and grow. Good for goals years away.<br><br>Smart people do both: an emergency fund first, then investing.' },
+  { q: { q: 'Why does money in a cupboard lose value?', o: ['Someone steals it', 'Prices go up, so it buys less', 'The bank charges fees', 'It doesn\'t lose value'], a: 1, why: 'Inflation: the number stays the same but each rupee buys a little less every year.' } },
+]},
+{ id: 'company-share', level: 'basics', title: 'What is a company and a share?', mins: 5, cards: [
+  { h: 'Meet Priya\'s chai shop.', t: 'Priya runs a chai shop. It makes ₹1,00,000 profit a year. She wants to open 10 more shops but needs ₹10 lakh.<br><br>She doesn\'t have it. What can she do?' },
+  { h: 'Option 1: borrow.', t: 'She takes a loan from a bank. She must pay it back with interest, whether her shops do well or not.' },
+  { h: 'Option 2: sell pieces of her business.', t: 'She cuts her business into <b>100 equal pieces</b> and sells some of them to people like you.<br><br>Each piece is called a <b>share</b>. If you buy one, you <b>own 1% of the chai business</b>.', word: ['Share', 'One small piece of ownership in a company.'] },
+  { h: 'Try it: buy pieces of the chai shop.', t: 'Tap to buy shares. See how much of the business you own and how much profit is yours.', w: 'chai' },
+  { h: 'Why would you want a piece?', t: 'If the chai shops grow and earn more, <b>your piece becomes more valuable</b>. Someone may pay you more for it later. Priya may also share some profit with you every year.' },
+  { h: 'Big companies do exactly this.', t: 'Reliance, Tata, Infosys: they are just very big "chai shops", split into <b>crores of shares</b>. Millions of people each own tiny pieces.' },
+  { q: { q: 'If you own 5 out of 100 shares of a company, what do you own?', o: ['5% of the company', '₹5', '5 products', 'Nothing'], a: 0, why: '5 out of 100 pieces is 5% ownership.' } },
+]},
+{ id: 'market', level: 'basics', title: 'What is the stock market?', mins: 5, cards: [
+  { h: 'It\'s a market. Like a sabzi mandi.', t: 'At a vegetable market, sellers bring tomatoes and buyers come to buy. They agree on a price.<br><br>A <b>stock market</b> is the same, but people buy and sell <b>shares</b> instead of tomatoes.', word: ['Stock', 'Another word for shares.'] },
+  { h: 'India has two big ones.', t: '<b>NSE</b>: National Stock Exchange (Mumbai).<br><b>BSE</b>: Bombay Stock Exchange (Mumbai, started in 1875).<br><br>They are like the market building. They don\'t own the shares. They just make sure buying and selling is fair.', word: ['Exchange', 'The official marketplace where shares are bought and sold.'] },
+  { h: 'Who do you buy from?', t: 'Not from the company. Not from NSE.<br><br>You buy from <b>another person</b> who wants to sell at that moment. NSE simply matches you together in a split second.' },
+  { h: 'See a buy match with a sell.', t: 'Tap Buy. Watch the exchange find a seller for you.', w: 'match' },
+  { h: 'Open hours.', t: 'The market is open <b>Monday to Friday, 9:15 am to 3:30 pm</b>. Closed on weekends and festival holidays.' },
+  { q: { q: 'When you buy a share on NSE, who sells it to you?', o: ['The company', 'NSE itself', 'Another investor', 'The government'], a: 2, why: 'The exchange just matches buyers and sellers. Your share comes from another investor.' } },
+]},
+{ id: 'sebi-basic', level: 'basics', title: 'Who keeps it safe? (SEBI)', mins: 4, cards: [
+  { h: 'Every game needs a referee.', t: 'In cricket, the umpire makes sure nobody cheats. In the stock market, the umpire is <b>SEBI</b>.', word: ['SEBI', 'Securities and Exchange Board of India: the government body that makes the market\'s rules.'] },
+  { h: 'What SEBI does.', t: '✅ Makes rules for companies, brokers and funds<br>✅ Makes companies tell the truth about their money<br>✅ Punishes cheaters with fines and bans<br>✅ Protects ordinary people like you' },
+  { h: 'What SEBI does NOT do.', t: '❌ It doesn\'t decide prices<br>❌ It doesn\'t promise you profit<br>❌ It doesn\'t tell you what to buy' },
+  { h: 'The #1 rule to stay safe.', t: '<b>Nobody can guarantee profit in the stock market.</b> If someone promises "sure-shot" or "guaranteed" returns, it\'s almost always a scam.', w: 'scam' },
+  { q: { q: 'Someone on WhatsApp promises guaranteed 5% profit every week. This is…', o: ['A great deal', 'Probably a scam', 'Approved by SEBI', 'Normal'], a: 1, why: 'Real investments never guarantee returns. That\'s the biggest warning sign.' } },
+]},
+{ id: 'accounts-basic', level: 'basics', title: 'The 3 accounts you need', mins: 5, cards: [
+  { h: 'You need 3 "boxes".', t: '🏦 <b>Bank account</b>: holds your money.<br>📱 <b>Trading account</b>: the app you use to buy and sell.<br>🗄️ <b>Demat account</b>: holds your shares.', word: ['Demat account', 'A safe electronic locker for your shares. "Demat" = dematerialised, meaning no paper.'] },
+  { h: 'Think of it like this.', t: 'Bank = your wallet.<br>Trading account = the shop counter.<br>Demat = your cupboard at home where you keep what you bought.' },
+  { h: 'Watch money and shares move.', t: 'Press the buttons in order. Follow where the money goes and where the shares go.', w: 'accounts' },
+  { h: 'Who opens these?', t: 'A <b>broker</b> (like Zerodha, Groww, Upstox, Angel One) opens your trading + demat accounts together, in about 15 minutes on your phone.<br><br>You need: <b>PAN card, Aadhaar, bank details</b>, and a selfie.', word: ['Broker', 'A SEBI-registered company that lets you buy and sell shares on the exchange.'] },
+  { h: 'Your shares are safe even if the broker closes.', t: 'Shares in your demat are held at a <b>depository</b> (CDSL or NSDL), not inside the broker. So they stay yours.' },
+  { q: { q: 'Where are your shares kept?', o: ['Bank account', 'Demat account', 'Trading account', 'Your phone'], a: 1, why: 'The demat account is the locker for shares.' } },
+]},
+
+/* ---------------- BEGINNER ---------------- */
+{ id: 'first-buy', level: 'beginner', title: 'Buying your first share, step by step', mins: 6, cards: [
+  { h: 'Let\'s buy 2 shares of a company.', t: 'Say you have ₹5,000 in your trading account and want to buy a company whose share price is ₹1,500.' },
+  { h: 'Step 1: Search the company.', t: 'In your broker app, type the name. You\'ll see its <b>price</b> (what one share costs right now) and whether it\'s <span class="up">green (up today)</span> or <span class="down">red (down today)</span>.' },
+  { h: 'Step 2: Choose quantity.', t: 'You choose how many shares. 2 shares × ₹1,500 = <b>₹3,000</b>.' },
+  { h: 'Step 3: Choose "Delivery".', t: 'Apps ask: <b>Delivery (CNC)</b> or <b>Intraday (MIS)</b>?<br><br>Delivery = you keep the shares as long as you want. <b>Always pick this as a beginner.</b><br>Intraday = you must sell the same day. That\'s for traders.', word: ['Delivery', 'Buying shares to keep them in your demat account.'] },
+  { h: 'Step 4: Press Buy.', t: 'Try it yourself in this mini app.', w: 'buyflow' },
+  { h: 'Step 5: Tomorrow, it\'s officially yours.', t: 'India uses <b>T+1</b>: shares reach your demat on the next working day after you buy. "T" means the trade day.', word: ['T+1', 'Trade day + 1 working day: when shares or money actually arrive.'] },
+  { q: { q: 'As a beginner who wants to keep shares, which option do you choose?', o: ['Intraday (MIS)', 'Delivery (CNC)', 'Futures', 'Options'], a: 1, why: 'Delivery means you buy to keep. Intraday must be sold the same day.' } },
+]},
+{ id: 'price-move', level: 'beginner', title: 'Why do prices go up and down?', mins: 5, cards: [
+  { h: 'Back to the mandi.', t: 'If everyone wants mangoes and there are few mangoes, the price goes <b>up</b>. If there are piles of mangoes and few buyers, the price goes <b>down</b>.' },
+  { h: 'Shares work the same.', t: 'More people want to <b>buy</b> than sell → price rises.<br>More people want to <b>sell</b> than buy → price falls.<br><br>That\'s it. Nobody "sets" the price.' },
+  { h: 'You control the crowd.', t: 'Add buyers or sellers. Drop some news. Watch the price react live.', w: 'crowd' },
+  { h: 'What makes people buy or sell?', t: '📈 Company earns more profit → people want it<br>📉 Bad news, fraud, losses → people run away<br>🌍 Interest rates, elections, global events → everyone gets nervous or excited' },
+  { h: 'Short term = noisy. Long term = profits.', t: 'Day to day, prices jump around randomly. Over many years, they tend to follow <b>how much money the company actually makes</b>.' },
+  { q: { q: 'Many people suddenly want to sell a share. The price will likely…', o: ['Go up', 'Go down', 'Stay the same', 'Be fixed by SEBI'], a: 1, why: 'More sellers than buyers pushes the price down.' } },
+]},
+{ id: 'returns', level: 'beginner', title: 'How you make (or lose) money', mins: 5, cards: [
+  { h: 'Way 1: the price goes up.', t: 'You buy a share at ₹100. A year later it\'s ₹130. You sell. You made <b>₹30 profit</b> per share.<br><br>This is called a <b>capital gain</b>.', word: ['Capital gain', 'Profit from selling something for more than you paid.'] },
+  { h: 'Way 2: the company pays you.', t: 'Profitable companies often share some profit with owners. If a company pays <b>₹5 per share</b> and you own 100 shares, <b>₹500 lands in your bank</b>.<br><br>This is called a <b>dividend</b>.', word: ['Dividend', 'A share of the company\'s profit paid to shareholders in cash.'] },
+  { h: 'But you can also lose.', t: 'If you buy at ₹100 and it falls to ₹70, selling means a <b>₹30 loss</b> per share. There is no guarantee.' },
+  { h: 'Play with it.', t: 'Change the buy and sell price. See profit, dividends and the yearly return.', w: 'returnsSimple' },
+  { h: 'Profit is taxed.', t: 'Sold within 1 year → 20% tax on the profit.<br>Held over 1 year → 12.5% tax, but the first ₹1.25 lakh of profit each year is tax-free.' },
+  { q: { q: 'A company pays you ₹500 because you hold its shares. What is this?', o: ['Capital gain', 'Dividend', 'Loan', 'Tax refund'], a: 1, why: 'A dividend is a share of profit paid to shareholders.' } },
+]},
+{ id: 'index', level: 'beginner', title: 'Nifty and Sensex: the market\'s report card', mins: 4, cards: [
+  { h: 'How do you know if "the market" went up?', t: 'There are thousands of companies. Checking each one is impossible. So we use an <b>index</b>: one number that tracks a group of big companies.', word: ['Index', 'A single number showing how a basket of shares is doing.'] },
+  { h: 'The two famous ones.', t: '<b>Nifty 50</b> = 50 big companies on NSE.<br><b>Sensex</b> = 30 big companies on BSE.<br><br>"Nifty fell 1%" means those 50 companies, together, lost about 1% today.' },
+  { h: 'Real Nifty, right now.', t: 'Switch between today and 5 years. Notice how today looks jumpy but 5 years climbs.', w: 'niftyLive' },
+  { q: { q: 'Nifty 50 tracks…', o: ['50 cheapest shares', '50 big companies on NSE', 'All Indian companies', '50 mutual funds'], a: 1, why: 'Nifty 50 is a basket of 50 large NSE companies.' } },
+]},
+{ id: 'mf-basic', level: 'beginner', title: 'Mutual funds, simply', mins: 5, cards: [
+  { h: 'Don\'t know which shares to buy?', t: 'Most people don\'t have time to study companies. A <b>mutual fund</b> solves this.' },
+  { h: 'It\'s like a group thali.', t: '1,000 friends each put in ₹500. One expert chef (the <b>fund manager</b>) uses the total to cook a big thali with 50 different dishes (50 different companies).<br><br>Everyone gets a share of the whole thali.', word: ['Mutual fund', 'Many people\'s money pooled together and invested by a professional.'] },
+  { h: 'Watch a fund being built.', t: '', w: 'pool' },
+  { h: 'What you get: units.', t: 'Instead of shares, you get <b>units</b> of the fund. If the companies inside go up, your units go up.', word: ['Units', 'Your pieces of a mutual fund.'] },
+  { h: 'The price of one unit: NAV.', t: '<b>NAV</b> is the price of one unit. It changes once a day after the market closes.<br><br>₹5,000 ÷ NAV ₹50 = <b>100 units</b>.', word: ['NAV', 'Net Asset Value: the price of one unit of a fund, updated daily.'] },
+  { h: 'Why beginners love them.', t: '✅ Start with just ₹100–₹500<br>✅ A professional picks the companies<br>✅ Your money is spread across many companies, so it\'s safer than one share<br>⚠️ Still not guaranteed. Funds go down too.' },
+  { q: { q: 'You invest ₹10,000 when the NAV is ₹100. How many units do you get?', o: ['10', '100', '1,000', '10,000'], a: 1, why: '₹10,000 ÷ ₹100 = 100 units.' } },
+]},
+{ id: 'sip-basic', level: 'beginner', title: 'SIP: invest a little every month', mins: 5, cards: [
+  { h: 'SIP is a habit, not a product.', t: '<b>SIP</b> = Systematic Investment Plan. You tell a mutual fund: "Take ₹1,000 from my bank on the 5th of every month and invest it."<br><br>It happens automatically, like a mobile recharge.', word: ['SIP', 'Investing a fixed amount in a mutual fund every month, automatically.'] },
+  { h: 'The magic: compounding.', t: 'Your money earns returns. Then <b>those returns earn returns too</b>. Like a snowball rolling down a hill, it grows faster and faster.', word: ['Compounding', 'Earning returns on your past returns, which makes growth speed up.'] },
+  { h: 'Try it.', t: 'Choose a monthly amount and years. The blue line is your money. The dashed line is what you actually put in.', w: 'sip' },
+  { h: 'Why SIP doesn\'t fear a crash.', t: 'When prices fall, your fixed ₹1,000 buys <b>more units</b>. When prices rise, it buys fewer. Over time this averages out. It\'s called <b>rupee cost averaging</b>.' },
+  { h: 'Time matters most.', t: 'Starting 5 years earlier often matters more than investing twice as much later. Start small, start early, don\'t stop.' },
+  { q: { q: 'The market falls this month. Your ₹1,000 SIP will buy…', o: ['More units', 'Fewer units', 'No units', 'Shares directly'], a: 0, why: 'Lower NAV means the same money buys more units.' } },
+]},
+{ id: 'risk', level: 'beginner', title: 'Risk: don\'t put all eggs in one basket', mins: 4, cards: [
+  { h: 'Any one company can fail.', t: 'Even famous companies have collapsed: fraud, bad decisions, new competition. If all your money is in one, you can lose most of it.' },
+  { h: 'Spread it out.', t: 'Owning many companies across different industries is called <b>diversification</b>. One failure then only hurts a little.', word: ['Diversification', 'Spreading money across many investments to reduce risk.'] },
+  { h: 'Crash test.', t: 'Choose how many stocks to own. Then crash one.', w: 'diversify' },
+  { h: 'Your safety checklist.', t: '1. Keep 6 months of expenses as an emergency fund first.<br>2. Only invest money you won\'t need for 5+ years in shares.<br>3. Never borrow to invest.<br>4. Never trust "guaranteed returns".' },
+  { q: { q: 'Why do investors diversify?', o: ['To guarantee profit', 'So one bad company can\'t ruin them', 'To avoid tax', 'SEBI forces them'], a: 1, why: 'Diversification limits the damage from any single failure.' } },
+]},
+
+/* ---------------- INTERMEDIATE ---------------- */
+{ id: 'orders', level: 'intermediate', title: 'Order types and the order book', mins: 6, cards: [
+  { h: 'Two ways to place an order.', t: '<b>Market order</b>: "Buy now at the best available price." Fast, but the price may be slightly different from what you saw.<br><b>Limit order</b>: "Buy only if price is ₹X or lower." You control the price, but it may never happen.', word: ['Limit order', 'An order that only executes at your chosen price or better.'] },
+  { h: 'The order book.', t: 'Every share has a live list: people waiting to buy (<span class="up">bids</span>) and people waiting to sell (<span class="down">asks</span>). A trade happens only when a bid meets an ask.', word: ['Bid / Ask', 'Bid = best price a buyer offers. Ask = lowest price a seller accepts.'] },
+  { h: 'Place real orders in a book.', t: 'Try a limit buy at ₹1,499 (it waits). Then at ₹1,502 (it matches instantly).', w: 'orderbook' },
+  { h: 'The spread.', t: 'The gap between the best bid and best ask is the <b>spread</b>. Popular shares have tiny spreads. Rarely traded shares have big spreads, so you lose a little just by buying and selling.' },
+  { q: { q: 'You want to buy only at ₹200 or less. Which order?', o: ['Market', 'Limit', 'Stop', 'Intraday'], a: 1, why: 'A limit order sets the maximum price you will pay.' } },
+]},
+{ id: 'reading-company', level: 'intermediate', title: 'Is a company cheap or expensive?', mins: 6, cards: [
+  { h: 'A ₹3,000 share is not "costlier" than a ₹300 one.', t: 'What matters is <b>how much profit you get for your money</b>, not the price of one share.' },
+  { h: 'Market cap: the whole company\'s price.', t: 'Share price × number of shares = <b>market capitalisation</b>. It\'s what the market thinks the entire company is worth.', word: ['Market cap', 'Share price × total shares: the value of the whole company.'], w: 'marketcap' },
+  { h: 'Large, mid and small caps.', t: 'Top 100 companies by market cap = <b>large cap</b> (steadier).<br>Next 150 = <b>mid cap</b>.<br>The rest = <b>small cap</b> (riskier, can grow faster).' },
+  { h: 'EPS: profit per share.', t: 'If a company makes ₹100 crore profit and has 10 crore shares, each share "earns" ₹10 a year. That\'s <b>EPS</b> (earnings per share).', word: ['EPS', 'Yearly profit divided by number of shares.'] },
+  { h: 'P/E: how many years of profit you\'re paying.', t: 'Price ÷ EPS = <b>P/E ratio</b>. A P/E of 20 means you pay ₹20 for every ₹1 of yearly profit.', w: 'pe' },
+  { q: { q: 'Price ₹500, EPS ₹25. What is the P/E?', o: ['20', '25', '475', '0.05'], a: 0, why: '500 ÷ 25 = 20.' } },
+]},
+{ id: 'funds-deep', level: 'intermediate', title: 'Choosing mutual funds wisely', mins: 6, cards: [
+  { h: 'Types of funds.', t: '<b>Equity</b>: mostly shares. For goals 5+ years away.<br><b>Debt</b>: loans to government and companies. Steadier.<br><b>Hybrid</b>: a mix.<br><b>Index fund</b>: simply copies Nifty 50 or similar. Cheapest.<br><b>Liquid</b>: for parking emergency money.' },
+  { h: 'The riskometer.', t: 'Every fund shows a SEBI <b>riskometer</b>. Tap a type to see where it sits.', w: 'risk' },
+  { h: 'The hidden fee: expense ratio.', t: 'Funds charge a small yearly fee, like 0.5% or 1.5%, quietly taken from the NAV. It sounds tiny. Over 25 years it can cost <b>lakhs</b>.', word: ['Expense ratio', 'The yearly fee a fund charges, as a % of your money.'], w: 'expense' },
+  { h: 'Direct vs Regular.', t: 'Same fund, two versions. <b>Regular</b> pays a commission to an agent, so the fee is higher. <b>Direct</b> has no commission, so more money stays with you.' },
+  { h: 'Exit load.', t: 'Many equity funds charge ~1% if you withdraw within 1 year. It\'s to discourage quick in-and-out.', word: ['Exit load', 'A small fee for withdrawing from a fund too early.'] },
+  { q: { q: 'Same fund: which plan usually gives you more money?', o: ['Regular', 'Direct', 'Both the same', 'Depends on NAV'], a: 1, why: 'Direct plans have a lower expense ratio, so more of the return stays with you.' } },
+]},
+{ id: 'candles', level: 'intermediate', title: 'Reading charts and candles', mins: 6, cards: [
+  { h: 'A line chart shows only one thing.', t: 'The closing price at each moment, joined by a line. Simple, but it hides what happened in between.' },
+  { h: 'A candle tells a whole story.', t: 'Each candle shows 4 prices for one time period:<br><b>Open</b> (start), <b>High</b> (highest), <b>Low</b> (lowest), <b>Close</b> (end).<br><br><span class="up">Green</span> = closed higher than it opened. <span class="down">Red</span> = closed lower.', word: ['Candlestick', 'A chart bar showing open, high, low and close for a time period.'] },
+  { h: 'Build a candle yourself.', t: 'Move the four prices. Watch the candle change shape.', w: 'candleBuilder' },
+  { h: 'Same data, 5 ways.', t: 'Switch chart types on real Nifty data. Hover to read each point.', w: 'chartTypes' },
+  { h: 'A warning about patterns.', t: 'People spend years reading chart patterns. Charts show <b>what happened</b>, not what will happen. Never trade on one pattern alone.' },
+  { q: { q: 'A red candle means…', o: ['The price closed lower than it opened', 'The company had a loss', 'Trading stopped', 'The price never moved'], a: 0, why: 'Red = close below open for that period.' } },
+]},
+{ id: 'tax-charges', level: 'intermediate', title: 'Taxes and charges', mins: 4, cards: [
+  { h: 'Every trade has small costs.', t: '<b>Brokerage</b>: the broker\'s fee (many charge ₹0 for delivery, ~₹20 per order for intraday/F&O).<br><b>STT</b>: Securities Transaction Tax, collected by the government.<br>Plus exchange fees, GST, stamp duty.' },
+  { h: 'Tax on profit (shares and equity funds).', t: '<b>Short-term</b> (held under 12 months): 20% of the profit.<br><b>Long-term</b> (held 12+ months): 12.5% of the profit above ₹1.25 lakh per year.<br><br>These are the current rates. Budgets can change them.' },
+  { h: 'Calculate it.', t: '', w: 'returns' },
+  { h: 'Dividends.', t: 'Dividends are added to your income and taxed at your normal income tax slab.' },
+  { q: { q: 'You held shares for 2 years and made ₹1,00,000 profit (your only gain this year). Tax?', o: ['₹0', '₹12,500', '₹20,000', '₹1,00,000'], a: 0, why: 'Long-term gains up to ₹1.25 lakh a year are tax-free.' } },
+]},
+
+/* ---------------- ADVANCED: F&O ---------------- */
+{ id: 'fo-why', level: 'advanced', title: 'What is F&O, really?', mins: 5, cards: [
+  { h: 'Start with a warning.', t: 'SEBI studied real traders: in FY2025-26, <b>87.7% of individuals who traded F&O lost money</b>. A year before, 91% did.<br><br>We\'ll learn it properly, then practise only with fake money.' },
+  { h: 'A deal about the future.', t: 'A farmer and a rice mill agree <b>today</b> that in October the mill will buy rice at ₹30/kg, whatever the market price is then.<br><br>That agreement is a <b>contract</b>. Its value depends on the price of rice. That\'s a <b>derivative</b>.', word: ['Derivative', 'A contract whose value comes from something else, like Nifty or a share.'] },
+  { h: 'F&O = Futures & Options.', t: 'Two kinds of these contracts trade on NSE. You don\'t own any shares. You\'re making a bet on where the price will go.' },
+  { h: 'Lots: you can\'t buy just one.', t: 'Contracts come in fixed bundles called <b>lots</b>. One Nifty 50 lot = <b>65 units</b>. So if Nifty moves 1 point, one lot gains or loses <b>₹65</b>.', word: ['Lot size', 'The fixed number of units in one F&O contract. Nifty = 65.'], w: 'lot' },
+  { q: { q: 'Nifty rises 100 points. How much does 1 lot of a Nifty contract move?', o: ['₹100', '₹650', '₹6,500', '₹65,000'], a: 2, why: '100 points × 65 units = ₹6,500.' } },
+]},
+{ id: 'futures', level: 'advanced', title: 'Futures and leverage', mins: 5, cards: [
+  { h: 'A future = a promise to buy or sell later.', t: 'Buy a Nifty future = "I\'ll buy Nifty later at today\'s agreed price." If Nifty goes up, you profit. If it goes down, you lose. Rupee for rupee.' },
+  { h: 'You only pay a deposit.', t: 'One Nifty lot is worth about ₹16 lakh (65 × ~25,000). But you only deposit around <b>12%</b>, roughly ₹2 lakh. This deposit is called <b>margin</b>.', word: ['Margin', 'The deposit you must keep with the broker to hold an F&O position.'] },
+  { h: 'That makes it a magnifying glass.', t: 'Small Nifty moves become big moves on your money: up <b>and down</b>. This is <b>leverage</b>. Try it.', word: ['Leverage', 'Controlling a big position with a small deposit, which magnifies gains and losses.'], w: 'leverage' },
+  { h: 'When losses eat your margin…', t: 'The broker asks you to add money (a <b>margin call</b>). If you can\'t, it closes your trade at a loss. You can lose more than you deposited.' },
+  { q: { q: 'Nifty falls 4%. With ~8× leverage, roughly what happens to your margin?', o: ['Falls 4%', 'Falls about 32%', 'Rises 4%', 'Nothing'], a: 1, why: '4% × 8 ≈ 32% of your deposit lost.' } },
+]},
+{ id: 'options', level: 'advanced', title: 'Options, explained like booking a flat', mins: 7, cards: [
+  { h: 'Imagine booking a flat.', t: 'A flat costs ₹50 lakh. You pay the builder <b>₹1 lakh token money</b> for the <b>right</b> to buy it at ₹50 lakh within 3 months.<br><br>If prices rise to ₹60 lakh, you buy at ₹50 lakh. Great deal.<br>If prices fall to ₹40 lakh, you walk away. You only lose your ₹1 lakh token.' },
+  { h: 'That\'s exactly an option.', t: 'The token money = <b>premium</b>.<br>The agreed price ₹50 lakh = <b>strike price</b>.<br>3 months = <b>expiry</b>.<br><br>You bought a <b>right, not a duty</b>.', word: ['Premium', 'The price you pay to buy an option.'] },
+  { h: 'Call option = right to BUY.', t: 'Buy a <b>call (CE)</b> when you think the price will <b class="up">go up</b>. Like booking the flat.', word: ['Call (CE)', 'Right to buy at the strike price. Gains when price rises.'] },
+  { h: 'Put option = right to SELL.', t: 'A <b>put (PE)</b> is like <b>insurance</b>. You pay a premium so that if the price <b class="down">falls</b>, you can still sell at the higher strike price.', word: ['Put (PE)', 'Right to sell at the strike price. Gains when price falls.'] },
+  { h: 'Buyer vs seller.', t: 'The <b>buyer</b> pays the premium. Most they can lose = the premium.<br>The <b>seller</b> (writer) receives the premium but takes the big risk, like an insurance company paying claims.' },
+  { h: 'See your profit at expiry.', t: 'Build a trade. Drag where Nifty ends. The chart shows profit or loss at every level.', w: 'payoff' },
+  { q: { q: 'You think Nifty will FALL. Which do you buy?', o: ['Call (CE)', 'Put (PE)', 'Future', 'Nothing'], a: 1, why: 'A put gains when the price falls.' } },
+]},
+{ id: 'chain', level: 'advanced', title: 'The option chain: a menu card', mins: 6, cards: [
+  { h: 'What is an option chain?', t: 'It\'s simply a <b>menu card</b> of all the options you can buy for one expiry date, with today\'s price of each.<br><br>In the middle: <b>strike prices</b>. Left side: <span class="up">calls</span>. Right side: <span class="down">puts</span>.', word: ['Option chain', 'A table listing every strike price with its call and put prices.'] },
+  { h: 'Read one row.', t: 'Tap any row of this mini chain. We\'ll explain in plain words exactly what you would be buying.', w: 'chainExplain' },
+  { h: 'ATM, ITM, OTM.', t: '<b>ATM</b> (at the money): strike ≈ current Nifty.<br><b>ITM</b> (in the money): already has real value, so it\'s expensive.<br><b>OTM</b> (out of the money): no real value yet, only hope. Cheap, and most expire at ₹0.' },
+  { h: 'Why are far-away options so cheap?', t: 'A call at a strike 1,000 points above Nifty needs a huge rise to pay off. The chance is small, so its price is small. Cheap does not mean good value.' },
+  { q: { q: 'Nifty is at 25,000. A 25,500 CE is…', o: ['In the money', 'At the money', 'Out of the money', 'Expired'], a: 2, why: 'A call with strike above the current price has no real value yet: out of the money.' } },
+]},
+{ id: 'decay', level: 'advanced', title: 'Time decay and expiry day', mins: 5, cards: [
+  { h: 'Options melt like ice cream.', t: 'Part of an option\'s price is "hope it moves before expiry". Every day, there\'s less time left, so less hope. The price slowly melts. This is <b>time decay (theta)</b>.', word: ['Theta', 'How much an option loses each day just from time passing.'] },
+  { h: 'Watch it melt.', t: 'Nifty doesn\'t move at all. Just drag the days.', w: 'decay' },
+  { h: 'Expiry day.', t: 'Nifty options expire every <b>Tuesday</b> (if it\'s a holiday, the day before). On expiry, OTM options become <b>₹0</b>. Prices swing wildly, and it\'s the most dangerous day for beginners.' },
+  { h: 'You can be right and still lose.', t: 'If you buy a call and Nifty rises slowly, time decay can eat your profit. Direction AND timing must both be right.' },
+  { q: { q: 'Nothing moves for a week. Your bought option…', o: ['Gains value', 'Loses value', 'Stays the same', 'Becomes shares'], a: 1, why: 'Time decay reduces the premium every day.' } },
+]},
+{ id: 'why-lose', level: 'advanced', title: 'Why most traders lose (and how not to)', mins: 4, cards: [
+  { h: 'The common mistakes.', t: '❌ Buying cheap far-OTM options hoping for a jackpot<br>❌ Trading on expiry day<br>❌ No stop-loss<br>❌ Borrowing money to trade<br>❌ "Revenge trading" after a loss<br>❌ Following tips groups' },
+  { h: 'Charges add up.', t: 'Every trade pays brokerage, STT, GST and fees. 10 small trades a day can cost thousands a month, even if you break even.' },
+  { h: 'Rules that help.', t: '✅ Practise for months in the simulator first<br>✅ Risk only 1–2% of your money per trade<br>✅ Know your maximum loss before you enter<br>✅ Keep a trading journal<br>✅ Treat F&O as a skill, never a lottery' },
+  { h: 'Ready to practise?', t: 'Open the F&O simulator. Use the "What am I buying?" explanations on every order.', w: 'goSim' },
+  { q: { q: 'Which is a healthy rule?', o: ['Borrow to trade bigger', 'Risk only 1–2% per trade', 'Trade every expiry day', 'Follow Telegram tips'], a: 1, why: 'Small risk per trade keeps you in the game while you learn.' } },
+]},
+];

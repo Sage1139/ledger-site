@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mutual funds &amp; SIP simulator — LEDGER</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<link rel="stylesheet" href="/assets/story.css" />
+</head>
+<body data-root="/">
+<div class="tm">
+  <aside>
+    <div class="kicker">Mutual fund &amp; SIP simulator</div>
+    <h1>Start a SIP in a<br/><span class="grad">real fund, years ago.</span></h1>
+    <p class="small" style="font-size:15px;margin-top:12px">Real funds, real daily NAVs from AMFI. Watch money leave your bank every month, units pile up, and years pass in seconds.</p>
+
+    <div class="glass panel" style="margin-top:20px">
+      <h3>1 · Pick a fund <a class="help" href="/learn/lesson.html?id=funds-deep">?</a></h3>
+      <div class="picks" id="picks"></div>
+      <div class="field"><input id="q" placeholder="Search any fund, e.g. axis, hdfc, nifty" autocomplete="off" /></div>
+      <div class="picks" id="res" style="margin-top:8px"></div>
+    </div>
+
+    <div class="glass panel" style="margin-top:14px">
+      <h3>2 · How will you invest? <a class="help" href="/learn/lesson.html?id=sip-basic">?</a></h3>
+      <div class="seg" id="mode"><button data-m="sip" class="on">Monthly SIP</button><button data-m="lump">One-time (lump sum)</button><button data-m="both">Both</button></div>
+      <div class="field" id="fSip"><label>SIP amount every month (₹)</label><input id="sip" type="number" min="100" step="500" value="5000" /></div>
+      <div class="field" id="fDay"><label>Debit date each month</label><select id="day"></select></div>
+      <div class="field" id="fUp"><label>Increase SIP every year by (%)</label><input id="up" type="number" min="0" max="50" value="0" /></div>
+      <div class="field" id="fLump" style="display:none"><label>One-time amount (₹)</label><input id="lump" type="number" min="1000" step="1000" value="100000" /></div>
+      <h3 style="margin-top:20px">3 · Start how many years ago?</h3>
+      <div class="seg" id="yrs"><button data-y="1">1</button><button data-y="3">3</button><button data-y="5" class="on">5</button><button data-y="10">10</button></div>
+      <button class="pill green" id="start" style="width:100%;margin-top:18px;padding:14px">Start my SIP in the past</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="wallet">
+      <div class="w" id="wB"><span>🏦 Bank</span><b id="vB">₹10,00,000</b><small>SIP is auto-debited from here</small></div>
+      <div class="w" id="wU"><span>📦 Units you own</span><b id="vU">0</b><small id="sU">held in your demat / folio</small></div>
+      <div class="w" id="wV"><span>💼 Value of units</span><b id="vV">₹0</b><small id="sV">units × today's NAV</small></div>
+      <div class="w" id="wP"><span>📈 Gain</span><b id="vP">₹0</b><small id="sP"></small></div>
+    </div>
+
+    <div class="glass panel" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <div><div class="small" id="fSub">Loading fund…</div><h3 style="font-size:22px;margin:2px 0 0" id="fName">—</h3></div>
+        <div class="row" id="ct"></div>
+      </div>
+      <div class="clock">
+        <button class="playbtn" id="play">▶</button>
+        <div><div class="small">Date</div><div class="date" id="date">—</div></div>
+        <div><div class="small">NAV (price of 1 unit)</div><div class="date" id="nav">—</div></div>
+        <div class="bar" id="bar"><i id="barI"></i></div>
+        <div class="seg" id="spd"><button data-s="1">1×</button><button data-s="3" class="on">3×</button><button data-s="8">8×</button></div>
+      </div>
+      <div class="tmchart" id="chart"></div>
+      <div class="legend small" style="margin-top:6px">Line = what your units are worth · Dashed = money you put in</div>
+      <div class="row" style="margin-top:14px">
+        <button class="pill green" id="addLump" disabled>Invest extra now</button>
+        <button class="ghost" id="pauseSip" disabled>Stop SIP</button>
+        <button class="pill" style="background:var(--red);color:#fff" id="redeem" disabled>Redeem (withdraw)</button>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:14px">
+      <div class="glass panel"><h3>What happened <span class="small" id="evN"></span></h3><div class="events" id="events"><div><span class="small">Pick a fund and press Start.</span></div></div></div>
+      <div class="glass panel"><h3>Your SIP report card <a class="help" href="/learn/lesson.html?id=mf-basic">?</a></h3>
+        <table class="bd" id="sum"></table>
+        <div class="cmp"><div><span class="small">This fund</span><b id="c1">—</b></div><div><span class="small">Same money in FD @7%</span><b id="c2">—</b></div><div><span class="small">Under a mattress</span><b id="c3">—</b></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="ovl2" id="ovl"><div class="modal" id="modal"></div></div>
+
+<script src="/assets/app.js"></script>
+<script src="/assets/chart.js"></script>
+<script>
+L.chrome('funds');
+const { $, $$, inr, num, lakh, toast } = L;
+// Featured funds. TER = assumed yearly fee for the estimate; exit = typical exit load if redeemed within 1 year; tax = equity or slab.
+const FEATURED = [
+  { code: 120716, name: 'UTI Nifty 50 Index Fund', type: 'Index fund · copies Nifty 50', ter: 0.2, exit: 0, tax: 'equity' },
+  { code: 122639, name: 'Parag Parikh Flexi Cap Fund', type: 'Flexi cap · equity', ter: 0.6, exit: 1, tax: 'equity' },
+  { code: 118825, name: 'Mirae Asset Large Cap Fund', type: 'Large cap · equity', ter: 0.6, exit: 1, tax: 'equity' },
+  { code: 125497, name: 'SBI Small Cap Fund', type: 'Small cap · high risk', ter: 0.7, exit: 1, tax: 'equity' },
+  { code: 120377, name: 'ICICI Pru Balanced Advantage', type: 'Hybrid · shares + bonds', ter: 0.9, exit: 1, tax: 'equity' },
+  { code: 119091, name: 'HDFC Liquid Fund', type: 'Liquid · very low risk', ter: 0.2, exit: 0, tax: 'slab' },
+];
+const START = 1000000, Y = 365 * 864e5;
+let F = FEATURED[0], navs = null, demo = false, mode = 'sip', yrs = 5, spd = 3;
+let st = null, pts = [], idx = 0, timer = null, playing = false;
+const chart = LChart.create($('#chart'), { type: 'area', color: '#00b3ff', fmt: (x) => lakh(x) }); LChart.switcher($('#ct'), chart, 'area');
+const fmtD = (t) => new Date(t).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+$('#day').innerHTML = Array.from({ length: 28 }, (_, i) => `<option ${i === 4 ? 'selected' : ''}>${i + 1}</option>`).join('');
+
+/* ---------- picking ---------- */
+function drawPicks() { $('#picks').innerHTML = FEATURED.map((f) => `<button data-c="${f.code}" class="${f.code === F.code ? 'on' : ''}"><b>${f.name}</b><small>${f.type}</small></button>`).join(''); }
+$('#picks').onclick = (e) => { const b = e.target.closest('[data-c]'); if (!b) return; F = FEATURED.find((f) => f.code === +b.dataset.c); drawPicks(); $('#res').innerHTML = ''; loadFund(); };
+let qt; $('#q').oninput = () => { clearTimeout(qt); const t = $('#q').value.trim(); if (t.length < 3) { $('#res').innerHTML = ''; return; } qt = setTimeout(async () => { try { const r = await L.mf({ q: t }); $('#res').innerHTML = r.results.map((x) => `<button data-x="${x.code}" data-n="${x.name.replace(/"/g, '')}"><b>${x.name}</b></button>`).join('') || '<span class="small">No direct-growth funds found.</span>'; } catch (e) { $('#res').innerHTML = '<span class="small">Fund search works on the published site.</span>'; } }, 350); };
+$('#res').onclick = (e) => { const b = e.target.closest('[data-x]'); if (!b) return; const n = b.dataset.n; F = { code: +b.dataset.x, name: n.replace(/ - Direct.*$/i, ''), type: 'From search', ter: /liquid|overnight|debt|gilt|bond/i.test(n) ? 0.3 : /index|etf/i.test(n) ? 0.25 : 0.7, exit: /index|liquid|overnight/i.test(n) ? 0 : 1, tax: /liquid|overnight|debt|gilt|bond|money market/i.test(n) ? 'slab' : 'equity' }; drawPicks(); $$('#res button').forEach((x) => x.classList.toggle('on', x === b)); loadFund(); };
+$('#mode').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; $$('#mode button').forEach((x) => x.classList.toggle('on', x === b)); ['fSip', 'fDay', 'fUp'].forEach((id) => ($('#' + id).style.display = mode === 'lump' ? 'none' : '')); $('#fLump').style.display = mode === 'sip' ? 'none' : ''; };
+$('#yrs').onclick = (e) => { const b = e.target.closest('[data-y]'); if (!b) return; yrs = +b.dataset.y; $$('#yrs button').forEach((x) => x.classList.toggle('on', x === b)); };
+$('#spd').onclick = (e) => { const b = e.target.closest('[data-s]'); if (!b) return; spd = +b.dataset.s; $$('#spd button').forEach((x) => x.classList.toggle('on', x === b)); if (playing) { pause(); play(); } };
+
+async function loadFund() {
+  pause(); st = null; $('#fName').textContent = F.name; $('#fSub').textContent = 'Loading real NAV history…';
+  try { const j = await L.mf({ code: F.code }); navs = j.navs; F.house = j.house; F.category = j.category; demo = false; }
+  catch (e) { demo = true; const n = 2600, t0 = Date.now() - n * 864e5 * 1.45, w = L.walk(n, 20, F.tax === 'slab' ? 0.0005 : 0.02, F.tax === 'slab' ? 0.00026 : 0.0005, F.code % 97); navs = w.map((nav, i) => ({ t: t0 + i * 864e5 * 1.45, nav })); }
+  const first = navs[0].t, avail = (navs.at(-1).t - first) / Y;
+  $('#fSub').textContent = (demo ? 'DEMO NAVs (real data loads on the published site) · ' : (F.category || '') + ' · ') + `NAV history from ${fmtD(first)} (${avail.toFixed(1)} yrs)`;
+  $$('#yrs button').forEach((b) => (b.disabled = +b.dataset.y > avail + 0.05));
+  if (yrs > avail) { const ok = [...$$('#yrs button')].filter((b) => !b.disabled).pop(); if (ok) ok.click(); }
+  const wk = weekly(navs.filter((n) => n.t >= navs.at(-1).t - yrs * Y)); chart.set(wk.map((n) => ({ t: n.t, o: n.nav, h: n.nav, l: n.nav, c: n.nav })), { animate: true, overlays: [] });
+  $('#nav').textContent = inr(navs.at(-1).nav, 4); $('#date').textContent = fmtD(navs.at(-1).t);
+}
+function weekly(arr) { const out = []; let last = -Infinity; arr.forEach((n) => { if (n.t - last >= 6 * 864e5) { out.push(n); last = n.t; } }); if (out.at(-1) !== arr.at(-1)) out.push(arr.at(-1)); return out; }
+function navOn(t) { let lo = 0, hi = navs.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (navs[m].t < t) lo = m + 1; else hi = m; } return navs[lo]; }
+drawPicks(); loadFund();
+
+/* ---------- the story ---------- */
+function light(id, red) { const e = $('#' + id); e.classList.remove('lit', 'litr'); void e.offsetWidth; e.classList.add(red ? 'litr' : 'lit'); setTimeout(() => e.classList.remove('lit', 'litr'), 1100); }
+function ev(t, h) { st.events.unshift([t, h]); }
+function invest(t, amt, why) {
+  if (amt > st.bank) { ev(t, `⚠️ ${why} of ${inr(amt)} <b class="down">bounced</b>: not enough money in your bank.`); return; }
+  const n = navOn(t); const u = amt / n.nav; st.bank -= amt; st.lots.push({ t: n.t, u, nav: n.nav, amt }); st.invested += amt; st.flows.push({ t: n.t, v: -amt });
+  light('wB', true); light('wU'); ev(n.t, `${why === 'SIP' ? '🔁 SIP auto-debit' : '💵 One-time investment'}: <b>${inr(amt)}</b> left your bank → bought <b>${num(u, 3)} units</b> @ NAV ${inr(n.nav, 2)}.`);
+}
+const units = () => st.lots.reduce((a, l) => a + l.u, 0);
+function start() {
+  pause();
+  const end = navs.at(-1).t, t0 = Math.max(navs[0].t, end - yrs * Y);
+  st = { bank: START, lots: [], invested: 0, flows: [], events: [], redeemed: 0, tax: 0, load: 0, sipOn: mode !== 'lump', sip: +$('#sip').value, up: +$('#up').value / 100, day: +$('#day').value, nextSip: 0, sipN: 0, feeEst: 0 };
+  if (st.sipOn && !(st.sip >= 100)) return toast('SIP must be at least ₹100', 'err');
+  const d0 = new Date(t0); st.nextSip = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + (d0.getUTCDate() > st.day ? 1 : 0), st.day);
+  pts = weekly(navs.filter((n) => n.t >= t0)); idx = 0; st.series = []; st.put = [];
+  ev(t0, `🚀 You started with <b>${inr(START)}</b> in your bank. ${st.sipOn ? `SIP of ${inr(st.sip)} set for the ${st.day}${['st', 'nd', 'rd'][st.day - 1] || 'th'} of every month.` : ''}`);
+  if (mode !== 'sip') invest(pts[0].t, +$('#lump').value, 'Lump sum');
+  step(); ['addLump', 'pauseSip', 'redeem'].forEach((id) => ($('#' + id).disabled = false)); $('#pauseSip').textContent = st.sipOn ? 'Stop SIP' : 'Restart SIP';
+  $('#start').textContent = 'Restart with new choices'; setTimeout(play, 700);
+}
+function step() {
+  const t = pts[idx].t;
+  while (st.sipOn && st.nextSip <= t) { const yrsIn = Math.floor(st.sipN / 12), amt = Math.round(st.sip * Math.pow(1 + st.up, yrsIn)); invest(st.nextSip, amt, 'SIP'); st.sipN++; const d = new Date(st.nextSip); st.nextSip = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, st.day); }
+  if (st.sipOn && st.nextSip <= t) return;
+  const val = units() * pts[idx].nav; st.feeEst += (val * (F.ter / 100) * (idx ? pts[idx].t - pts[idx - 1].t : 0)) / Y;
+  st.series.push({ t, o: val, h: val, l: val, c: val }); st.put.push(st.invested - st.redeemed);
+  const y = Math.floor((t - pts[0].t) / Y); if (y > (st.y || 0)) { st.y = y; ev(t, `📅 <b>${y} year${y > 1 ? 's' : ''}</b> passed. You've put in ${inr(st.invested)}; it's worth <b>${inr(val)}</b>.`); }
+  draw();
+}
+function tick() { if (idx >= pts.length - 1) { pause(); ev(pts[idx].t, '🏁 <b>You\'ve reached today.</b> Redeem to see what lands in your bank.'); draw(); return; } idx++; step(); }
+function play() { if (!st || idx >= pts.length - 1) return; playing = true; $('#play').textContent = '❚❚'; timer = setInterval(tick, 1000 / (spd * 4)); }
+function pause() { playing = false; $('#play').textContent = '▶'; clearInterval(timer); }
+$('#play').onclick = () => (playing ? pause() : st ? play() : start());
+$('#bar').onclick = (e) => { if (!st) return; const r = $('#bar').getBoundingClientRect(), to = Math.round(((e.clientX - r.left) / r.width) * (pts.length - 1)); if (to <= idx) return toast('You can only move forward in time', 'err'); while (idx < to) { idx++; step(); } };
+$('#start').onclick = () => { if (!navs) return; start(); };
+
+function xirr(flows) { let r = 0.1; for (let k = 0; k < 80; k++) { let f = 0, df = 0; const t0 = flows[0].t; flows.forEach(({ t, v }) => { const y = (t - t0) / Y; f += v / Math.pow(1 + r, y); df += (-y * v) / Math.pow(1 + r, y + 1); }); const nr = r - f / df; if (!isFinite(nr)) break; if (Math.abs(nr - r) < 1e-7) { r = nr; break; } r = Math.max(-0.99, nr); } return r; }
+function draw() {
+  const p = pts[idx], u = units(), val = u * p.nav, cost = st.lots.reduce((a, l) => a + l.amt * (l.u / (l.amt / l.nav)), 0), gain = val + st.redeemed - st.invested;
+  $('#vB').textContent = inr(st.bank); $('#vU').textContent = num(u, 3); $('#sU').textContent = u ? 'avg cost ' + inr(cost / u, 2) + ' per unit' : 'held in your demat / folio';
+  $('#vV').textContent = inr(val); $('#vP').textContent = (gain >= 0 ? '+' : '') + inr(gain); $('#vP').className = gain >= 0 ? 'up' : 'down';
+  $('#sP').textContent = st.invested ? ((gain / st.invested) * 100).toFixed(1) + '% on money put in' : '';
+  $('#date').textContent = fmtD(p.t); $('#nav').textContent = inr(p.nav, 4); $('#barI').style.width = (idx / (pts.length - 1)) * 100 + '%';
+  chart.set(st.series, { overlays: [{ values: st.put, label: 'put in' }] });
+  $('#events').innerHTML = st.events.slice(0, 100).map(([t, h]) => `<div><span class="d">${fmtD(t)}</span><span>${h}</span></div>`).join(''); $('#evN').textContent = st.events.length + ' events';
+  const flows = [...st.flows, { t: p.t, v: val }].sort((a, b) => a.t - b.t), x = flows.length > 1 && st.invested ? xirr(flows) : 0;
+  $('#sum').innerHTML = [['Money you put in', inr(st.invested)], ['Instalments paid', st.sipN], ['Units you own', num(u, 3)], ['Value today', inr(val)], ['Already withdrawn', inr(st.redeemed)], ['Yearly return (XIRR)', `<span class="${x >= 0 ? 'up' : 'down'}">${(x * 100).toFixed(1)}%</span>`], [`Fund fees already taken (est. ${F.ter}%/yr, inside NAV)`, inr(st.feeEst)]].map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('') + `<tr class="tot"><td>Total gain</td><td class="${gain >= 0 ? 'up' : 'down'}">${gain >= 0 ? '+' : ''}${inr(gain)}</td></tr>`;
+  const fd = st.flows.filter((f) => f.v < 0).reduce((a, f) => a + -f.v * Math.pow(1.07, (p.t - f.t) / Y), 0);
+  $('#c1').innerHTML = `<span class="up">${lakh(val + st.redeemed)}</span>`; $('#c2').textContent = lakh(fd); $('#c3').textContent = lakh(st.invested);
+}
+
+/* ---------- actions ---------- */
+function modal(h) { $('#modal').innerHTML = h; $('#ovl').classList.add('on'); }
+const close = () => $('#ovl').classList.remove('on');
+$('#ovl').onclick = (e) => { if (e.target.id === 'ovl') close(); };
+$('#addLump').onclick = () => { pause(); modal(`<h3 style="font-size:22px">Invest extra</h3><p class="small">NAV on ${fmtD(pts[idx].t)}: ${inr(pts[idx].nav, 4)}. Bank: ${inr(st.bank)}.</p><div class="field"><label>Amount (₹)</label><input id="la" type="number" value="50000"></div><div class="row" style="margin-top:16px"><button class="pill green" id="lgo">Invest</button><button class="ghost" id="lc">Cancel</button></div>`);
+  $('#lgo').onclick = () => { invest(pts[idx].t, +$('#la').value, 'Lump sum'); close(); draw(); }; $('#lc').onclick = close; };
+$('#pauseSip').onclick = () => { st.sipOn = !st.sipOn; const t = pts[idx].t; if (st.sipOn) { const d = new Date(t); st.nextSip = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, st.day); ev(t, '▶️ SIP restarted.'); } else ev(t, '⏹️ You stopped your SIP. Units you already own stay invested and keep growing or falling.'); $('#pauseSip').textContent = st.sipOn ? 'Stop SIP' : 'Restart SIP'; draw(); };
+$('#redeem').onclick = () => { pause(); const p = pts[idx], u = units(); if (!u) return toast('You have no units', 'err');
+  modal(`<h3 style="font-size:22px">Redeem (withdraw)</h3><p class="small">You own ${num(u, 3)} units. NAV on ${fmtD(p.t)} is ${inr(p.nav, 4)}.</p><div class="field"><label>How much to withdraw?</label><div class="seg" id="rp"><button data-p="25">25%</button><button data-p="50">50%</button><button data-p="100" class="on">Everything</button></div></div><table class="bd" id="rx"></table><p class="small" id="rn" style="margin-top:10px"></p><div class="row" style="margin-top:16px"><button class="pill" style="background:var(--red);color:#fff" id="rgo">Redeem</button><button class="ghost" id="rc">Cancel</button></div>`);
+  let pc = 100; const calc = () => { let want = (u * pc) / 100, left = want, gross = 0, load = 0, sg = 0, lg = 0; for (const l of st.lots) { if (left <= 1e-9) break; const tk = Math.min(left, l.u), v = tk * p.nav, young = p.t - l.t < Y; gross += v; if (young) { load += v * (F.exit / 100); sg += v - tk * l.nav; } else lg += v - tk * l.nav; left -= tk; }
+      const tax = F.tax === 'equity' ? Math.max(0, sg) * 0.2 + Math.max(0, lg - 125000) * 0.125 : 0; return { want, gross, load, sg, lg, tax, net: gross - load }; };
+  const upd = () => { const r = calc(); $('#rx').innerHTML = `<tr><td>Units sold</td><td>${num(r.want, 3)}</td></tr><tr><td>Value</td><td>${inr(r.gross)}</td></tr><tr><td>Exit load (${F.exit}% on units held &lt;1 yr)</td><td>-${inr(r.load)}</td></tr><tr class="tot"><td>Reaches your bank</td><td>${inr(r.net)}</td></tr><tr><td>Gain held &lt;1 yr / 1 yr+</td><td>${inr(r.sg)} / ${inr(r.lg)}</td></tr><tr><td>Tax to pay when filing ITR</td><td class="down">${F.tax === 'equity' ? inr(r.tax) : 'At your income slab'}</td></tr>`;
+    $('#rn').textContent = F.tax === 'equity' ? 'Equity fund tax: 20% on gains from units held under 1 year; 12.5% on long-term gains above ₹1.25 lakh a year. Money usually arrives in 1–3 working days.' : 'Debt and liquid fund gains are added to your income and taxed at your slab rate. Money usually arrives the next working day.'; };
+  $$('#rp button').forEach((b) => (b.onclick = () => { pc = +b.dataset.p; $$('#rp button').forEach((x) => x.classList.toggle('on', x === b)); upd(); })); upd();
+  $('#rgo').onclick = () => { const r = calc(); let left = r.want; while (left > 1e-9 && st.lots.length) { const l = st.lots[0], tk = Math.min(left, l.u), f = tk / l.u; l.amt *= 1 - f; l.u -= tk; left -= tk; if (l.u <= 1e-9) st.lots.shift(); }
+    st.bank += r.net; st.redeemed += r.net; st.load += r.load; st.tax += r.tax; st.flows.push({ t: p.t, v: r.net }); if (pc === 100 && st.sipOn) { st.sipOn = false; $('#pauseSip').textContent = 'Restart SIP'; }
+    light('wU', true); light('wB'); ev(p.t, `💸 Redeemed <b>${num(r.want, 3)} units</b> → <b>${inr(r.net)}</b> credited to your bank${r.load ? ` (after ${inr(r.load)} exit load)` : ''}.${r.tax ? ` Tax due at ITR filing: ${inr(r.tax)}.` : ''}${pc === 100 ? ' SIP stopped.' : ''}`); close(); draw(); };
+  $('#rc').onclick = close; };
+</script>
+</body>
+</html>

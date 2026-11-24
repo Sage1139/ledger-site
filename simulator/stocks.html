@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stocks simulator — LEDGER</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<link rel="stylesheet" href="/assets/story.css" />
+</head>
+<body data-root="/">
+<div class="tm">
+  <!-- LEFT: setup -->
+  <aside>
+    <div class="kicker">Stocks simulator · time machine</div>
+    <h1>Buy a real stock<br/><span class="grad">years ago.</span></h1>
+    <p class="small" style="font-size:15px;margin-top:12px">Go back in time, buy shares at the real price of that day, and watch the years pass. Real prices, real dividends. Fake money.</p>
+
+    <div class="glass panel" style="margin-top:20px">
+      <h3>1 · Pick a company <a class="help" href="/learn/lesson.html?id=company-share">?</a></h3>
+      <div class="field"><input id="q" placeholder="Search or type any NSE symbol" autocomplete="off" /></div>
+      <div class="picks" id="picks" style="margin-top:10px"></div>
+    </div>
+
+    <div class="glass panel" style="margin-top:14px">
+      <h3>2 · Go back how far?</h3>
+      <div class="seg" id="yrs"><button data-r="1y">1 year</button><button data-r="2y">2 years</button><button data-r="5y" class="on">5 years</button><button data-r="10y">10 years</button></div>
+      <h3 style="margin-top:20px">3 · How much to invest on day 1? <a class="help" href="/learn/lesson.html?id=first-buy">?</a></h3>
+      <div class="field"><input id="amt" type="number" min="1000" step="1000" value="100000" /></div>
+      <div class="small" id="amtNote" style="margin-top:6px">From your virtual bank balance of ₹10,00,000</div>
+      <button class="pill green" id="start" style="width:100%;margin-top:18px;padding:14px">Travel back &amp; buy</button>
+    </div>
+    <div class="glass panel howto" style="margin-top:14px">
+      <b>What happens:</b> money moves from your <b>bank</b> to your <b>trading account</b>, buys shares, and the shares land in your <b>demat</b>. Then time starts moving. Dividends drop into your bank. Sell any time to bring money home.
+    </div>
+  </aside>
+
+  <!-- RIGHT: the story -->
+  <main>
+    <div class="wallet" id="wallet">
+      <div class="w" id="wB"><span>🏦 Bank</span><b id="vB">₹10,00,000</b><small id="sB">your money</small></div>
+      <div class="w" id="wT"><span>📱 Trading account</span><b id="vT">₹0</b><small>money ready to buy</small></div>
+      <div class="w" id="wD"><span>🗄️ Demat</span><b id="vD">0 shares</b><small id="sD">your shares</small></div>
+      <div class="w" id="wP"><span>📈 Profit so far</span><b id="vP">₹0</b><small id="sP">incl. dividends</small></div>
+    </div>
+
+    <div class="glass panel" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <div><div class="small" id="cSub">Pick a company on the left to begin</div><h3 style="font-size:24px;margin:2px 0 0" id="cName">—</h3></div>
+        <div class="row" id="ct"></div>
+      </div>
+      <div class="clock">
+        <button class="playbtn" id="play" title="Play / pause">▶</button>
+        <div><div class="small">Date</div><div class="date" id="date">—</div></div>
+        <div><div class="small">Share price</div><div class="date" id="px">—</div></div>
+        <div class="bar" id="bar"><i id="barI"></i></div>
+        <div class="seg" id="spd"><button data-s="1">1×</button><button data-s="3" class="on">3×</button><button data-s="8">8×</button></div>
+      </div>
+      <div class="tmchart" id="chart"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="pill green" id="buyMore" disabled>Buy more on this date</button>
+        <button class="pill" style="background:var(--red);color:#fff" id="sell" disabled>Sell shares on this date</button>
+        <span class="small" id="hint">The chart reveals the real price history as time passes.</span>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:14px">
+      <div class="glass panel"><h3>What happened <span class="small" id="evN"></span></h3><div class="events" id="events"><div><span class="small">Your story will appear here.</span></div></div></div>
+      <div class="glass panel"><h3>How did you do? <a class="help" href="/learn/lesson.html?id=returns">?</a></h3>
+        <table class="bd" id="sum"></table>
+        <div class="small" style="margin-top:12px">If you had put the same money in…</div>
+        <div class="cmp"><div><span class="small">This stock</span><b id="c1">—</b></div><div><span class="small">Nifty 50 index</span><b id="c2">—</b></div><div><span class="small">Fixed deposit @7%</span><b id="c3">—</b></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="ovl2" id="ovl"><div class="modal" id="modal"></div></div>
+
+<script src="/assets/app.js"></script>
+<script src="/assets/chart.js"></script>
+<script>
+L.chrome('stocks');
+const { $, $$, inr, num, lakh, toast } = L;
+const LIST = [['RELIANCE','Reliance Industries'],['TCS','Tata Consultancy Services'],['HDFCBANK','HDFC Bank'],['INFY','Infosys'],['ICICIBANK','ICICI Bank'],['ITC','ITC'],['SBIN','State Bank of India'],['BHARTIARTL','Bharti Airtel'],['TATAMOTORS','Tata Motors'],['TITAN','Titan'],['ASIANPAINT','Asian Paints'],['HINDUNILVR','Hindustan Unilever'],['MARUTI','Maruti Suzuki'],['BAJFINANCE','Bajaj Finance'],['LT','Larsen & Toubro'],['WIPRO','Wipro'],['TATASTEEL','Tata Steel'],['COALINDIA','Coal India'],['HAL','Hindustan Aeronautics'],['IRCTC','IRCTC'],['DMART','Avenue Supermarts'],['NESTLEIND','Nestle India']];
+const STT = 0.001, STAMP = 0.00015, DP = 18, START = 1000000;
+let sym = 'RELIANCE', range = '5y', spd = 3;
+let D = null; // {k:[candles], div:[], nifty:[]}
+let st, idx = 0, playing = false, timer = null;
+const chart = LChart.create($('#chart'), { type: 'area' }); LChart.switcher($('#ct'), chart, 'area');
+const fmtD = (t) => new Date(t).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+
+/* ---------- picker ---------- */
+function picks() {
+  const t = $('#q').value.trim().toUpperCase();
+  const hits = LIST.filter(([s, n]) => !t || s.includes(t) || n.toUpperCase().includes(t));
+  if (t && /^[A-Z0-9&\-]{2,20}$/.test(t) && !hits.some((h) => h[0] === t)) hits.push([t, 'Any NSE symbol, try it']);
+  $('#picks').innerHTML = hits.slice(0, 12).map(([s, n]) => `<button data-s="${s}" class="${s === sym ? 'on' : ''}"><b>${s}</b><small>${n}</small></button>`).join('');
+}
+$('#q').oninput = picks; $('#picks').onclick = (e) => { const b = e.target.closest('[data-s]'); if (b) { sym = b.dataset.s; picks(); if (!st) preview(); } };
+$('#yrs').onclick = (e) => { const b = e.target.closest('[data-r]'); if (!b) return; range = b.dataset.r; $$('#yrs button').forEach((x) => x.classList.toggle('on', x === b)); if (!st) preview(); };
+$('#spd').onclick = (e) => { const b = e.target.closest('[data-s]'); if (!b) return; spd = +b.dataset.s; $$('#spd button').forEach((x) => x.classList.toggle('on', x === b)); if (playing) { pause(); play(); } };
+picks();
+
+/* ---------- data ---------- */
+let demo = false;
+async function load() {
+  try {
+    const [a, b] = await Promise.all([L.quotes([sym + '.NS'], range, { candles: true, div: true }), L.quotes(['^NSEI'], range, { candles: true })]);
+    const q = a.quotes[0]; if (!q || q.candles.length < 10) throw new Error('no data');
+    demo = false; return { k: q.candles, div: q.dividends || [], nifty: b.quotes[0].candles, name: q.name };
+  } catch (e) {
+    demo = true; const n = { '1y': 52, '2y': 104, '5y': 260, '10y': 120 }[range], step = range === '10y' ? 30 * 864e5 : 7 * 864e5, t0 = Date.now() - n * step;
+    const w = L.walk(n, 1000, 0.07, 0.003, sym.length * 7), nw = L.walk(n, 15000, 0.04, 0.0025, 3);
+    const mk = (arr) => arr.map((c, i) => ({ t: t0 + i * step, o: arr[i - 1] || c, h: Math.max(c, arr[i - 1] || c) * 1.01, l: Math.min(c, arr[i - 1] || c) * 0.99, c }));
+    return { k: mk(w), div: [{ t: t0 + n * step * 0.3, amount: 8 }, { t: t0 + n * step * 0.7, amount: 10 }], nifty: mk(nw), name: sym };
+  }
+}
+async function preview() {
+  $('#cName').textContent = sym; $('#cSub').textContent = 'Loading real prices…';
+  D = await load(); idx = 0;
+  $('#cSub').textContent = (demo ? 'DEMO DATA (live prices load on the published site) · ' : 'NSE · real prices · ') + `${fmtD(D.k[0].t)} → ${fmtD(D.k.at(-1).t)}`;
+  chart.set(D.k, { animate: true, markers: [] }); $('#date').textContent = fmtD(D.k[0].t); $('#px').textContent = inr(D.k[0].c, 2);
+  $('#hint').textContent = 'This is the full history as a preview. Press "Travel back & buy" to live through it.';
+}
+preview();
+
+/* ---------- account ---------- */
+function reset() { st = { bank: START, trade: 0, lots: [], realized: 0, divs: 0, charges: 0, tax: 0, invested: 0, events: [], markers: [], nU: 0, nReal: 0, fd: [], fdReal: 0, ltcgFY: {} }; }
+const shares = () => st.lots.reduce((a, l) => a + l.q, 0);
+const cost = () => st.lots.reduce((a, l) => a + l.q * l.p, 0);
+function light(ids, red) { ids.forEach((id) => { const e = $('#' + id); e.classList.remove('lit', 'litr'); void e.offsetWidth; e.classList.add(red ? 'litr' : 'lit'); setTimeout(() => e.classList.remove('lit', 'litr'), 1200); }); }
+function ev(t, html) { st.events.unshift([t, html]); }
+function niftyAt(t) { const n = D.nifty; let lo = 0, hi = n.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (n[m].t < t) lo = m + 1; else hi = m; } return n[lo].c; }
+function buy(amount) {
+  const p = D.k[idx].c, t = D.k[idx].t, q = Math.floor(amount / (p * (1 + STT + STAMP)));
+  if (q < 1) return toast('That\'s not enough for even 1 share at ' + inr(p, 2), 'err');
+  const gross = q * p, ch = gross * (STT + STAMP), total = gross + ch;
+  if (total > st.bank) return toast('Not enough money in your bank', 'err');
+  st.bank -= total; st.trade += total; light(['wB']); setTimeout(() => { st.trade -= total; light(['wT', 'wD']); draw(); }, 500);
+  st.lots.push({ t, q, p }); st.invested += total; st.charges += ch;
+  st.nU += total / niftyAt(t); st.fd.push({ t, a: total });
+  st.markers.push({ i: idx, color: '#00e38c', label: 'B' });
+  ev(t, `🛒 Moved <b>${inr(total)}</b> bank → trading, bought <b>${q} shares</b> @ ${inr(p, 2)} (charges ${inr(ch)}). Shares reach demat next working day.`);
+  draw();
+}
+function fyOf(t) { const d = new Date(t + 5.5 * 36e5), y = d.getUTCFullYear(); return d.getUTCMonth() >= 3 ? y : y - 1; }
+function sell(q) {
+  const p = D.k[idx].c, t = D.k[idx].t, have = shares(); q = Math.min(q, have); if (q < 1) return;
+  const frac = q / have;
+  let left = q, st_g = 0, lt_g = 0;
+  while (left > 0) { const l = st.lots[0], take = Math.min(left, l.q), g = take * (p - l.p); (t - l.t >= 365 * 864e5 ? (lt_g += g) : (st_g += g)); l.q -= take; left -= take; if (!l.q) st.lots.shift(); }
+  const gross = q * p, ch = gross * STT + DP, fy = fyOf(t);
+  const used = st.ltcgFY[fy] || 0, ltTaxable = Math.max(0, lt_g - Math.max(0, 125000 - used)); if (lt_g > 0) st.ltcgFY[fy] = used + lt_g;
+  const tax = Math.max(0, st_g) * 0.2 + Math.max(0, ltTaxable) * 0.125;
+  st.realized += st_g + lt_g; st.charges += ch; st.tax += tax;
+  const nVal = st.nU * frac * niftyAt(t); st.nReal += nVal; st.nU *= 1 - frac;
+  const fdVal = st.fd.reduce((a, f) => a + f.a * Math.pow(1.07, (t - f.t) / (365 * 864e5)), 0) * frac; st.fdReal += fdVal; st.fd.forEach((f) => (f.a *= 1 - frac));
+  st.trade += gross - ch; light(['wD', 'wT']);
+  setTimeout(() => { st.bank += st.trade; st.trade = 0; light(['wB']); draw(); }, 700);
+  st.markers.push({ i: idx, color: '#ff453a', label: 'S' });
+  ev(t, `💰 Sold <b>${q} shares</b> @ ${inr(p, 2)} = ${inr(gross)}. Charges ${inr(ch)}. Money reaches your bank next working day.${tax > 0 ? ` Tax due when you file ITR: <b class="down">${inr(tax)}</b>.` : st_g + lt_g > 0 ? ' No tax: long-term gains under ₹1.25 lakh this year.' : ''}`);
+  draw();
+}
+let lastDiv = -1;
+function payDivs() {
+  D.div.forEach((d, i) => { if (i <= lastDiv || d.t > D.k[idx].t) return; lastDiv = i; const q = st.lots.filter((l) => l.t < d.t).reduce((a, l) => a + l.q, 0); if (!q) return; const amt = q * d.amount; st.bank += amt; st.divs += amt; light(['wB']); ev(d.t, `🎁 Dividend: ₹${num(d.amount)} per share × ${q} shares = <b class="up">${inr(amt)}</b> straight into your bank.`); });
+}
+
+/* ---------- time ---------- */
+function tick() { if (idx >= D.k.length - 1) { pause(); finale(); return; } idx++; payDivs(); const y = Math.floor((D.k[idx].t - D.k[0].t) / (365 * 864e5)); if (y > (tick.y || 0)) { tick.y = y; ev(D.k[idx].t, `📅 <b>${y} year${y > 1 ? 's' : ''}</b> passed. Your shares are worth ${inr(shares() * D.k[idx].c)}.`); } draw(); }
+function play() { if (!st) return; if (idx >= D.k.length - 1) return; playing = true; $('#play').textContent = '❚❚'; timer = setInterval(tick, 1000 / (spd * 4)); }
+function pause() { playing = false; $('#play').textContent = '▶'; clearInterval(timer); }
+$('#play').onclick = () => (playing ? pause() : play());
+$('#bar').onclick = (e) => { if (!st) return; const r = $('#bar').getBoundingClientRect(), to = Math.round(((e.clientX - r.left) / r.width) * (D.k.length - 1)); if (to <= idx) return toast('You can only move forward in time', 'err'); while (idx < to) tick(); };
+function finale() { ev(D.k.at(-1).t, `🏁 <b>You've reached today.</b> Sell to see your final take-home, or keep holding.`); draw(); }
+
+/* ---------- draw ---------- */
+function draw() {
+  if (!st) return;
+  const p = D.k[idx].c, sh = shares(), val = sh * p, unreal = val - cost(), prof = st.realized + unreal + st.divs - st.charges;
+  $('#vB').textContent = inr(st.bank); $('#vT').textContent = inr(st.trade); $('#vD').textContent = sh + ' shares'; $('#sD').textContent = 'worth ' + inr(val);
+  $('#vP').textContent = (prof >= 0 ? '+' : '') + inr(prof); $('#vP').className = prof >= 0 ? 'up' : 'down';
+  $('#date').textContent = fmtD(D.k[idx].t); $('#px').innerHTML = inr(p, 2);
+  $('#barI').style.width = (idx / (D.k.length - 1)) * 100 + '%';
+  chart.set(D.k.slice(0, idx + 1), { markers: st.markers });
+  $('#events').innerHTML = st.events.slice(0, 80).map(([t, h]) => `<div><span class="d">${fmtD(t)}</span><span>${h}</span></div>`).join('');
+  $('#evN').textContent = st.events.length + ' events';
+  $('#buyMore').disabled = false; $('#sell').disabled = !sh;
+  const yrs = Math.max(0.01, (D.k[idx].t - (st.fd[0] ? st.fd[0].t : D.k[0].t)) / (365 * 864e5)), net = val + st.bank - START;
+  $('#sum').innerHTML = [['Money you invested', inr(st.invested)], ['Shares still held (value today)', inr(val)], ['Dividends received', '<span class="up">+' + inr(st.divs) + '</span>'], ['Booked profit from sales', inr(st.realized)], ['Charges paid (STT, stamp, DP)', '-' + inr(st.charges)], ['Tax due on sales', '-' + inr(st.tax)]].map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('') +
+    `<tr class="tot"><td>Your total gain after tax</td><td class="${net - st.tax >= 0 ? 'up' : 'down'}">${net - st.tax >= 0 ? '+' : ''}${inr(net - st.tax)}</td></tr>`;
+  const fdNow = st.fd.reduce((a, f) => a + f.a * Math.pow(1.07, (D.k[idx].t - f.t) / (365 * 864e5)), 0) + st.fdReal, nNow = st.nU * niftyAt(D.k[idx].t) + st.nReal, me = val + st.bank - START + st.invested;
+  const g = (x) => `<span class="${x >= st.invested ? 'up' : 'down'}">${lakh(x)}</span>`;
+  if (st.invested) { $('#c1').innerHTML = g(me); $('#c2').innerHTML = g(nNow); $('#c3').innerHTML = g(fdNow); }
+}
+
+/* ---------- actions ---------- */
+$('#start').onclick = async () => {
+  const amt = +$('#amt').value; if (!(amt >= 1000)) return toast('Invest at least ₹1,000', 'err'); if (amt > START) return toast('Your virtual bank has ₹10,00,000', 'err');
+  pause(); D = await load(); reset(); idx = 0; lastDiv = -1; tick.y = 0;
+  $('#cName').textContent = sym; $('#cSub').textContent = (demo ? 'DEMO DATA · ' : 'NSE · real prices · ') + 'Time travelling…';
+  buy(amt); $('#start').textContent = 'Restart with new choices'; $('#hint').textContent = 'Press ▶ to let time pass. Pause anytime to buy more or sell.';
+  setTimeout(play, 900);
+};
+function modal(html) { $('#modal').innerHTML = html; $('#ovl').classList.add('on'); }
+$('#ovl').onclick = (e) => { if (e.target.id === 'ovl') $('#ovl').classList.remove('on'); };
+$('#buyMore').onclick = () => { pause(); const p = D.k[idx].c;
+  modal(`<h3 style="font-size:22px">Buy more ${sym}</h3><p class="small">On ${fmtD(D.k[idx].t)}, one share costs <b>${inr(p, 2)}</b>. Bank balance: ${inr(st.bank)}.</p><div class="field"><label>Amount to invest (₹)</label><input id="ba" type="number" value="${Math.min(50000, Math.floor(st.bank))}"></div><p class="small" id="bx"></p><div class="row" style="margin-top:16px"><button class="pill green" id="bgo">Buy</button><button class="ghost" id="bc">Cancel</button></div>`);
+  const upd = () => { const a = +$('#ba').value, q = Math.floor(a / (p * (1 + STT + STAMP))); $('#bx').textContent = `That buys ${q} shares. Money goes bank → trading → shares land in your demat.`; }; $('#ba').oninput = upd; upd();
+  $('#bgo').onclick = () => { buy(+$('#ba').value); $('#ovl').classList.remove('on'); }; $('#bc').onclick = () => $('#ovl').classList.remove('on'); };
+$('#sell').onclick = () => { pause(); const p = D.k[idx].c, have = shares();
+  modal(`<h3 style="font-size:22px">Sell ${sym}</h3><p class="small">On ${fmtD(D.k[idx].t)} the price is <b>${inr(p, 2)}</b>. You hold ${have} shares (average cost ${inr(cost() / have, 2)}).</p><div class="field"><label>Shares to sell</label><input id="sq" type="number" min="1" max="${have}" value="${have}"></div><table class="bd" id="sx"></table><div class="row" style="margin-top:16px"><button class="pill" style="background:var(--red);color:#fff" id="sgo">Sell</button><button class="ghost" id="sc">Cancel</button></div>`);
+  const upd = () => { const q = Math.min(have, Math.max(0, +$('#sq').value)), gross = q * p, ch = gross * STT + DP; let lt = 0, sg = 0, left = q; for (const l of st.lots) { if (!left) break; const tk = Math.min(left, l.q); (D.k[idx].t - l.t >= 365 * 864e5 ? (lt += tk * (p - l.p)) : (sg += tk * (p - l.p))); left -= tk; }
+    $('#sx').innerHTML = `<tr><td>Sale value</td><td>${inr(gross)}</td></tr><tr><td>STT + DP charges</td><td>-${inr(ch)}</td></tr><tr><td>Short-term gain (held &lt;1 yr) · 20% tax</td><td>${inr(sg)}</td></tr><tr><td>Long-term gain (held 1 yr+) · 12.5% above ₹1.25L</td><td>${inr(lt)}</td></tr><tr class="tot"><td>Reaches your bank (T+1)</td><td>${inr(gross - ch)}</td></tr>`; };
+  $('#sq').oninput = upd; upd(); $('#sgo').onclick = () => { sell(Math.floor(+$('#sq').value)); $('#ovl').classList.remove('on'); }; $('#sc').onclick = () => $('#ovl').classList.remove('on'); };
+</script>
+</body>
+</html>

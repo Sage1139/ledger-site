@@ -19,15 +19,16 @@ const L = (() => {
   function chrome(active) {
     const root = document.body.dataset.root || '';
     const links = [
-      ['learn', root + 'learn/', 'Learn'],
-      ['sim', root + 'simulator/', 'Simulator'],
-      ['sip', root + 'learn/mutual-funds.html#sip', 'SIP Lab'],
+      ['learn', '/learn/', 'Learn'],
+      ['stocks', '/simulator/stocks.html', 'Stocks sim'],
+      ['funds', '/simulator/funds.html', 'Funds & SIP sim'],
+      ['trade', '/simulator/trade.html', 'Live trading & F&O'],
     ];
     const nav = document.createElement('nav');
     nav.className = 'nav';
     nav.innerHTML = `<a class="logo" href="${root || './'}">${BRAND}</a>
       <ul>${links.map(([k, h, t]) => `<li><a href="${h}" class="${k === active ? 'on' : ''}">${t}</a></li>`).join('')}</ul>
-      <div class="row"><a class="pill" href="${root}simulator/">Open simulator</a><button class="menu" aria-label="Menu">☰</button></div>`;
+      <div class="row"><a class="pill" href="/simulator/">Simulators</a><button class="menu" aria-label="Menu">☰</button></div>`;
     document.body.prepend(nav);
     $('.menu', nav).onclick = () => $('ul', nav).classList.toggle('open');
     const f = document.createElement('footer');
@@ -50,8 +51,24 @@ const L = (() => {
   }
 
   /* --- canvas line chart --- */
+  // animated on first draw: the line "grows" in, so charts feel alive
   function line(cv, data, color, opt = {}) {
     if (!cv) return;
+    if (!cv._drawn && !cv._visible && 'IntersectionObserver' in window) { // wait until the chart scrolls into view, then animate
+      cv._pending = [data, color, opt];
+      if (!cv._io) { cv._io = new IntersectionObserver((es) => { if (es[0].isIntersecting) { cv._visible = true; cv._io.disconnect(); line(cv, ...cv._pending); } }, { threshold: 0.3 }); cv._io.observe(cv); }
+      return;
+    }
+    if (!cv._drawn && opt.animate !== false && data.length > 2 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      cv._drawn = true; const id = (cv._anim = (cv._anim || 0) + 1), t0 = performance.now(), dur = 900;
+      const step = (t) => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3), n = Math.max(2, Math.ceil(data.length * e));
+        const o2 = { ...opt, min: opt.min ?? Math.min(...data.filter(isFinite)), max: opt.max ?? Math.max(...data.filter(isFinite)), series2: opt.series2 && opt.series2.slice(0, n), mark: opt.mark != null && opt.mark < n ? opt.mark : undefined, _n: data.length };
+        if (cv._anim !== id) return; lineRaw(cv, data.slice(0, n), color, o2); if (p < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step); return;
+    }
+    cv._drawn = true; cv._anim = (cv._anim || 0) + 1; lineRaw(cv, data, color, opt);
+  }
+  function lineRaw(cv, data, color, opt = {}) {
     const c = cv.getContext('2d');
     const dpr = Math.min(2, devicePixelRatio || 1);
     const w = (cv.width = cv.offsetWidth * dpr), h = (cv.height = cv.offsetHeight * dpr);
@@ -60,7 +77,7 @@ const L = (() => {
     if (d.length < 2) return;
     let mn = opt.min ?? Math.min(...d), mx = opt.max ?? Math.max(...d);
     if (opt.zero) { mn = Math.min(mn, 0); mx = Math.max(mx, 0); }
-    const pad = h * 0.1, X = (i) => (i / (d.length - 1)) * w, Y = (v) => h - pad - ((v - mn) / (mx - mn || 1)) * (h - pad * 2);
+    const pad = h * 0.1, N = Math.max(d.length, opt._n || 0), X = (i) => (i / (N - 1)) * w, Y = (v) => h - pad - ((v - mn) / (mx - mn || 1)) * (h - pad * 2);
     if (opt.zero) { c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = dpr; c.setLineDash([4 * dpr, 4 * dpr]); c.beginPath(); c.moveTo(0, Y(0)); c.lineTo(w, Y(0)); c.stroke(); c.setLineDash([]); }
     if (opt.mark != null) { const mxp = X(opt.mark); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = dpr; c.beginPath(); c.moveTo(mxp, 0); c.lineTo(mxp, h); c.stroke(); }
     c.beginPath();
@@ -69,7 +86,7 @@ const L = (() => {
     if (opt.glow !== false) { c.shadowColor = color; c.shadowBlur = 18 * dpr; }
     c.stroke(); c.shadowBlur = 0;
     if (opt.fill !== false) {
-      c.lineTo(w, h); c.lineTo(0, h);
+      c.lineTo(X(d.length - 1), h); c.lineTo(0, h);
       const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, color + '44'); g.addColorStop(1, color + '00');
       c.fillStyle = g; c.fill();
     }
@@ -113,11 +130,15 @@ const L = (() => {
   }
 
   /* --- market data --- */
-  async function quotes(symbols, range) {
-    const root = document.body.dataset.root || '';
-    const url = root + 'api/quote?symbols=' + encodeURIComponent(symbols.join(',')) + (range ? '&range=' + range : '');
+  async function quotes(symbols, range, o = {}) {
+    const url = '/api/quote?symbols=' + encodeURIComponent(symbols.join(',')) + (range ? '&range=' + range : '') + (o.candles ? '&candles=1' : '') + (o.div ? '&div=1' : '');
     const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) throw new Error('feed ' + r.status);
+    return r.json();
+  }
+  async function mf(params) {
+    const r = await fetch('/api/mf?' + new URLSearchParams(params), { cache: 'no-store' });
+    if (!r.ok) throw new Error('mf ' + r.status);
     return r.json();
   }
 
@@ -153,5 +174,7 @@ const L = (() => {
     return type === 'CE' ? ncdf(d1) : ncdf(d1) - 1;
   }
 
-  return { $, $$, inr, num, pct, store, chrome, motion, line, quiz, quotes, toast, walk, bs, delta };
+  const lakh = (n) => { const a = Math.abs(n), s = n < 0 ? '-₹' : '₹'; return a >= 1e7 ? s + (a / 1e7).toFixed(2) + ' Cr' : a >= 1e5 ? s + (a / 1e5).toFixed(2) + ' L' : inr(n); };
+
+  return { $, $$, inr, num, pct, lakh, store, chrome, motion, line, quiz, quotes, mf, toast, walk, bs, delta };
 })();

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lesson — LEDGER</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>
+body{display:flex;flex-direction:column;min-height:100vh}
+.player{flex:1;display:grid;grid-template-columns:300px 1fr;min-height:0}
+.side{border-right:1px solid var(--line);padding:20px 0;overflow:auto;max-height:calc(100vh - 69px);position:sticky;top:69px;background:#08080a}
+.side .lvl{padding:16px 22px 6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;display:flex;justify-content:space-between}
+.side a{display:flex;gap:12px;align-items:center;padding:10px 22px;font-size:14px;color:var(--dim);border-left:2px solid transparent;transition:all .15s}
+.side a:hover{color:var(--fg);background:rgba(255,255,255,.03)}
+.side a.cur{color:var(--fg);background:rgba(255,255,255,.05);border-left-color:var(--g1)}
+.side a .n{width:22px;height:22px;border-radius:50%;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.side a.done .n{background:var(--g1);color:#000;border-color:var(--g1)}
+.stage{padding:28px 5vw 40px;display:flex;flex-direction:column;align-items:center}
+.crumb{width:100%;max-width:860px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.crumb .where{font-size:13px;color:var(--dim)}
+.crumb .where b{color:var(--fg)}
+.crumb h1{font-size:clamp(26px,3.4vw,40px);font-weight:900;letter-spacing:-.03em;margin-top:6px;line-height:1.1}
+.steps{display:flex;gap:6px;width:100%;max-width:860px;margin:20px 0 18px}
+.steps i{flex:1;height:5px;border-radius:5px;background:#1f1f24;cursor:pointer;transition:background .3s}
+.steps i.seen{background:rgba(0,227,140,.45)}.steps i.cur{background:var(--g1)}
+.card{width:100%;max-width:860px;min-height:380px;padding:40px;position:relative;animation:in .45s cubic-bezier(.16,1,.3,1)}
+@keyframes in{from{opacity:0;transform:translateX(30px)}}
+.card.back{animation:inb .45s cubic-bezier(.16,1,.3,1)}
+@keyframes inb{from{opacity:0;transform:translateX(-30px)}}
+.card h2{font-size:clamp(28px,3.6vw,44px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:18px}
+.card .txt{font-size:19px;line-height:1.65;color:#d4d4d9;max-width:680px}
+.card .txt b{color:var(--fg)}
+.word{margin-top:22px;display:inline-flex;gap:12px;align-items:flex-start;padding:14px 18px;border-radius:14px;background:rgba(0,179,255,.08);border:1px solid rgba(0,179,255,.25);max-width:640px}
+.word .t{font-size:11px;letter-spacing:.14em;color:var(--g2);white-space:nowrap;margin-top:3px}
+.word b{display:block;font-size:16px}.word span{font-size:15px;color:#c7c7cc}
+.wbox{margin-top:24px;padding:24px;border-radius:18px;background:rgba(0,0,0,.25);border:1px solid var(--line)}
+.wbox .tag{display:inline-block;font-size:11px;letter-spacing:.2em;color:var(--g2);border:1px solid rgba(0,179,255,.35);padding:4px 10px;border-radius:999px;margin-bottom:14px}
+.check .q{font-size:24px;font-weight:700;margin-bottom:18px;letter-spacing:-.01em}
+.check .opts{display:grid;gap:10px}
+.check .opt{text-align:left;padding:16px 20px;border:1px solid var(--line2);border-radius:14px;font-size:17px;transition:all .2s}
+.check .opt:hover:not([disabled]){border-color:var(--fg)}
+.check .opt.right{border-color:var(--g1);background:rgba(0,227,140,.1)}.check .opt.wrong{border-color:var(--red);background:rgba(255,69,58,.1)}
+.check .why{margin-top:16px;font-size:16px;color:#c7c7cc}
+.nav2{width:100%;max-width:860px;display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+.nav2 .small{text-align:center}
+.nav2 button,.nav2 a{min-width:130px;text-align:center}
+.nav2 [disabled]{opacity:.3;pointer-events:none}
+.kbd{font-size:11px;color:var(--dim2);margin-top:12px}
+.done-card{text-align:center;padding-top:60px}
+.done-card .big{font-size:80px}
+.lessons-btn{display:none}
+@media(max-width:900px){
+  .player{grid-template-columns:1fr}
+  .side{display:none;position:fixed;inset:69px 0 0 0;z-index:50;max-height:none}
+  .side.open{display:block}
+  .lessons-btn{display:inline-block}
+  .card{padding:26px 20px;min-height:0}
+  .card .txt{font-size:17px}
+  .nav2 button,.nav2 a{min-width:0;padding:11px 16px}
+}
+</style>
+</head>
+<body data-root="/">
+<div class="player">
+  <aside class="side" id="side"></aside>
+  <main class="stage">
+    <div class="crumb">
+      <div><div class="where" id="where"></div><h1 id="title"></h1></div>
+      <button class="ghost lessons-btn" id="lb">☰ All lessons</button>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div id="cardHost" style="width:100%;display:flex;justify-content:center"></div>
+    <div class="nav2">
+      <button class="ghost" id="prev">← Back</button>
+      <div class="small" id="count"></div>
+      <button class="pill green" id="next">Next →</button>
+    </div>
+    <div class="kbd">Tip: use ← → arrow keys</div>
+  </main>
+</div>
+<script src="/assets/app.js"></script>
+<script src="/assets/chart.js"></script>
+<script src="/learn/lessons.js"></script>
+<script src="/learn/widgets.js"></script>
+<script>
+L.chrome('learn');
+const $ = L.$;
+const params = new URLSearchParams(location.search);
+let li = Math.max(0, LESSONS.findIndex((l) => l.id === params.get('id')));
+let ci = 0, cleanup = null, dir = 1;
+const done = () => L.store.get('ledger.done2', {});
+const answers = {};
+
+function sidebar() {
+  const d = done();
+  $('#side').innerHTML = LEVELS.map((lv) => {
+    const ls = LESSONS.filter((l) => l.level === lv.id), nd = ls.filter((l) => d[l.id]).length;
+    return `<div class="lvl" style="color:${lv.color}"><span>${lv.name}</span><span class="small">${nd}/${ls.length}</span></div>` +
+      ls.map((l) => { const i = LESSONS.indexOf(l); return `<a href="?id=${l.id}" data-i="${i}" class="${i === li ? 'cur' : ''} ${d[l.id] ? 'done' : ''}"><span class="n">${d[l.id] ? '✓' : i + 1}</span>${l.title}</a>`; }).join('');
+  }).join('') + `<div style="padding:20px 22px"><a class="ghost" href="/learn/" style="padding:10px 16px;border-left:1px solid var(--line2)">← All levels</a></div>`;
+}
+function show() {
+  const les = LESSONS[li], lv = LEVELS.find((x) => x.id === les.level), lvLessons = LESSONS.filter((l) => l.level === les.level);
+  const total = les.cards.length;
+  document.title = les.title + ' — ' + BRAND;
+  $('#where').innerHTML = `<b style="color:${lv.color}">${lv.name}</b> · Lesson ${lvLessons.indexOf(les) + 1} of ${lvLessons.length} in this level · ${li + 1} of ${LESSONS.length} overall · ~${les.mins} min`;
+  $('#title').textContent = les.title;
+  $('#steps').innerHTML = Array.from({ length: total + 1 }, (_, i) => `<i data-c="${i}" class="${i === ci ? 'cur' : i < ci ? 'seen' : ''}" title="Card ${i + 1}"></i>`).join('');
+  $('#count').textContent = ci < total ? `Card ${ci + 1} of ${total}` : 'Finished';
+  if (cleanup) { try { cleanup(); } catch (e) {} cleanup = null; }
+  const host = $('#cardHost');
+  if (ci >= total) return finish(les);
+  const c = les.cards[ci];
+  let html = '';
+  if (c.q) {
+    const a = answers[les.id + ci];
+    html = `<div class="kicker">Quick check</div><div class="check"><div class="q">${c.q.q}</div><div class="opts">${c.q.o.map((o, k) => `<button class="opt" data-k="${k}">${o}</button>`).join('')}</div><div class="why"></div></div>`;
+  } else {
+    html = (c.h ? `<h2>${c.h}</h2>` : '') + (c.t ? `<div class="txt">${c.t}</div>` : '') +
+      (c.word ? `<div class="word"><div class="t">NEW WORD</div><div><b>${c.word[0]}</b><span>${c.word[1]}</span></div></div>` : '') +
+      (c.w ? `<div class="wbox"><div class="tag">TRY IT</div><div id="wg"></div></div>` : '');
+  }
+  host.innerHTML = `<div class="glass card ${dir < 0 ? 'back' : ''}">${html}</div>`;
+  if (c.w && W[c.w]) { try { cleanup = W[c.w]($('#wg')) || null; } catch (e) { console.error(e); $('#wg').textContent = 'This demo could not load.'; } }
+  if (c.q) {
+    const mark = (k) => { const ok = k === c.q.a; L.$$('.opt').forEach((x) => { x.disabled = true; if (+x.dataset.k === c.q.a) x.classList.add('right'); }); if (!ok) L.$(`.opt[data-k="${k}"]`).classList.add('wrong'); $('.why').innerHTML = `<b class="${ok ? 'up' : 'down'}">${ok ? 'Correct!' : 'Not quite.'}</b> ${c.q.why}`; };
+    if (answers[les.id + ci] != null) mark(answers[les.id + ci]);
+    L.$$('.opt').forEach((b) => (b.onclick = () => { answers[les.id + ci] = +b.dataset.k; mark(+b.dataset.k); }));
+  }
+  $('#prev').disabled = ci === 0 && li === 0;
+  $('#prev').textContent = ci === 0 ? '← Previous lesson' : '← Back';
+  $('#next').textContent = ci === total - 1 ? 'Finish ✓' : 'Next →';
+  history.replaceState(null, '', `?id=${les.id}#${ci + 1}`);
+  sidebar();
+}
+function finish(les) {
+  const qs = les.cards.map((c, i) => (c.q ? i : -1)).filter((i) => i >= 0);
+  const right = qs.filter((i) => answers[les.id + i] === les.cards[i].q.a).length;
+  const d = done(); d[les.id] = 1; L.store.set('ledger.done2', d);
+  const nxt = LESSONS[li + 1];
+  $('#cardHost').innerHTML = `<div class="glass card done-card"><div class="big">🎉</div><h2>Lesson complete!</h2><div class="txt" style="margin:0 auto">${qs.length ? `You got <b>${right} of ${qs.length}</b> quick checks right.` : ''} ${right < qs.length ? 'Go back anytime to review.' : ''}</div>
+    <div class="row" style="justify-content:center;margin-top:28px">${nxt ? `<a class="pill green" href="?id=${nxt.id}">Next: ${nxt.title} →</a>` : `<a class="pill green" href="/simulator/">You finished everything! Open the simulators →</a>`}<a class="ghost" href="/learn/">All lessons</a></div></div>`;
+  $('#next').textContent = nxt ? 'Next lesson →' : 'Simulators →';
+  $('#count').textContent = 'Finished';
+  sidebar();
+}
+function go(step) {
+  const les = LESSONS[li];
+  if (ci + step < 0) { if (li > 0) { li--; ci = LESSONS[li].cards.length - 1; dir = -1; show(); } return; }
+  if (ci + step > les.cards.length) { if (li < LESSONS.length - 1) { li++; ci = 0; dir = 1; show(); } else location.href = '/simulator/'; return; }
+  dir = step; ci += step; show(); scrollTo({ top: 0, behavior: 'smooth' });
+}
+$('#prev').onclick = () => go(-1);
+$('#next').onclick = () => go(1);
+$('#steps').onclick = (e) => { const i = e.target.dataset.c; if (i != null) { dir = +i > ci ? 1 : -1; ci = +i; show(); } };
+$('#side').onclick = (e) => { const a = e.target.closest('a[data-i]'); if (!a) return; e.preventDefault(); li = +a.dataset.i; ci = 0; dir = 1; $('#side').classList.remove('open'); show(); scrollTo(0, 0); };
+$('#lb').onclick = () => $('#side').classList.toggle('open');
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,select')) return; if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); });
+let tx = null; addEventListener('touchstart', (e) => { if (!e.target.closest('.wbox')) tx = e.touches[0].clientX; }, { passive: true });
+addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 70) go(dx < 0 ? 1 : -1); });
+const h = parseInt(location.hash.slice(1), 10); if (h > 0 && h <= LESSONS[li].cards.length) ci = h - 1;
+show();
+</script>
+</body>
+</html>

@@ -262,31 +262,65 @@ function renderWl() {
   }).join('') || '<div class="empty"><b>Empty watchlist</b>Search above to add stocks.</div>';
   S.wl.forEach((s) => { const q = s === 'NIFTY' ? Q['^NSEI'] : Q[s]; if (q) lastPx[s] = q.price; });
 }
+let selInst = null; // an F&O contract shown on the chart
 function renderChartHead() {
   const isIdx = sel === 'NIFTY', q = isIdx ? Q['^NSEI'] : Q[sel];
-  $('#cName').textContent = isIdx ? 'NIFTY 50' : sel;
-  $('#cSub').textContent = isIdx ? 'NSE INDEX · trade via futures & options' : 'NSE · ' + (UNIVERSE[sel] || 'Equity');
-  $('#cLtp').textContent = q ? num(q.price) : '—';
-  $('#cChg').innerHTML = q ? chg(q.change) + ` <span class="small">today</span>` : '';
-  $('#cBuy').textContent = isIdx ? 'Buy future' : 'Buy'; $('#cSell').textContent = isIdx ? 'Sell future' : 'Sell';
+  if (selInst) {
+    const px = price(selInst), p = parse(selInst);
+    $('#cName').textContent = instName(selInst);
+    $('#cSub').textContent = p.t === 'OPT' ? `NIFTY OPTION · ${p.type === 'CE' ? 'gains if Nifty rises above ' : 'gains if Nifty falls below '}${p.K} · model price from live Nifty` : 'NIFTY FUTURE · moves 1:1 with Nifty';
+    $('#cLtp').textContent = px != null ? num(px) : '—'; $('#cChg').innerHTML = `<span class="small">Nifty ${spot ? num(spot) : ''}</span>`;
+    $('#cBuy').textContent = 'Buy'; $('#cSell').textContent = 'Sell';
+  } else {
+    $('#cName').textContent = isIdx ? 'NIFTY 50' : sel;
+    $('#cSub').textContent = isIdx ? 'NSE INDEX · you trade it through futures & options' : 'NSE · ' + (UNIVERSE[sel] || 'Equity');
+    $('#cLtp').textContent = q ? num(q.price) : '—';
+    $('#cChg').innerHTML = q ? chg(q.change) + ` <span class="small">today</span>` : '';
+    $('#cBuy').textContent = isIdx ? 'Buy future' : 'Buy'; $('#cSell').textContent = isIdx ? 'Sell future' : 'Sell';
+  }
+  const open = marketOpen() && !demo;
+  $('#liveDot').innerHTML = open ? '<span class="up">● Live</span> · refreshes every 30s' : 'Market closed: prices are frozen.';
+  $('#replay').style.display = open ? 'none' : '';
   $('#dataBanner').innerHTML = demo ? '<div class="banner">Live data is unreachable right now, so you\'re seeing demo prices. Everything still works.</div>'
     : !marketOpen() ? `<div class="banner">${holidayToday() ? 'Today is an NSE trading holiday.' : 'The market is closed.'} Orders fill instantly at the last traded price so you can keep practising.</div>` : '';
   if (q) $('#cStats').innerHTML = [['Prev close', q.prevClose], ['Day high', q.dayHigh], ['Day low', q.dayLow], ['52W high', q.high52]].map(([l, v]) => `<div><span>${l}</span><b>${v != null ? num(v) : '—'}</b></div>`).join('');
 }
-let chartData = [], chartReq = 0;
-async function loadChart() {
-  const id = ++chartReq, sym = sel === 'NIFTY' ? '^NSEI' : ySym(sel);
+const CH = LChart.create($('#cWrap'), { type: 'candle' });
+LChart.switcher($('#cTypes'), CH, 'candle');
+let chartReq = 0, chartKey = '';
+function fnoCandles(k, inst) { // turn Nifty candles into the contract's price candles
+  const p = parse(inst);
+  return k.map((x) => {
+    const T = Math.max(0, (p.exp - x.t) / (365 * 864e5));
+    if (p.t === 'FUT') { const f = 1 + 0.065 * T; return { t: x.t, o: x.o * f, h: x.h * f, l: x.l * f, c: x.c * f }; }
+    const f = (s) => L.bs(s, p.K, T, p.type, volFor(p.K)), o = f(x.o), c = f(x.c), a = f(x.h), b = f(x.l);
+    return { t: x.t, o, c, h: Math.max(o, c, a, b), l: Math.min(o, c, a, b) };
+  });
+}
+async function loadChart(quiet) {
+  const id = ++chartReq, sym = selInst || sel === 'NIFTY' ? '^NSEI' : ySym(sel), key = (selInst || sel) + range;
+  const fresh = key !== chartKey; chartKey = key;
   try {
-    const q = (await L.quotes([sym], range)).quotes[0]; if (id !== chartReq) return;
-    chartData = q.series; $('#cNote').textContent = 'Real prices, delayed about 15 minutes. Hover the chart to read values.';
+    const q = (await L.quotes([sym], range, { candles: true })).quotes[0]; if (id !== chartReq) return;
+    CH.set(selInst ? fnoCandles(q.candles, selInst) : q.candles, { animate: fresh && !quiet });
+    $('#cNote').textContent = selInst ? 'Contract price worked out from real Nifty prices (about 15 min delayed). Hover to read values.' : 'Real prices, about 15 minutes delayed. Hover the chart to read open, high, low and close.';
   } catch (e) {
     if (id !== chartReq) return;
-    const q = sel === 'NIFTY' ? Q['^NSEI'] : Q[sel]; chartData = q ? q.series : [];
+    const q = sel === 'NIFTY' || selInst ? Q['^NSEI'] : Q[sel], s = q ? q.series : [];
+    const k = s.map((c, i) => ({ t: Date.now() - (s.length - i) * 6e4, o: s[i - 1] || c, h: Math.max(c, s[i - 1] || c), l: Math.min(c, s[i - 1] || c), c }));
+    CH.set(selInst ? fnoCandles(k, selInst) : k, { animate: fresh && !quiet });
     $('#cNote').textContent = 'Showing demo data.';
   }
-  drawChart();
 }
-function drawChart() { const up = chartData.length > 1 && chartData.at(-1) >= chartData[0]; L.line($('#cChart'), chartData, up ? '#00e38c' : '#ff453a'); }
+function drawChart() { CH.redraw(); }
+$('#replay').onclick = () => {
+  if ($('#replay').dataset.on) { CH.stop(); delete $('#replay').dataset.on; $('#replay').textContent = '▶ Replay last session'; return; }
+  if (range !== '1d') { range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); }
+  $('#replay').dataset.on = 1; $('#replay').textContent = '■ Stop replay';
+  loadChart(true).then(() => CH.replay(25000));
+  toast('Replaying the last trading session, minute by minute, at high speed');
+};
+CH.onReplayEnd = () => { delete $('#replay').dataset.on; $('#replay').textContent = '▶ Replay last session'; };
 function renderChain() {
   if (spot == null) { $('#oc').innerHTML = '<tr><td class="empty">Waiting for Nifty price…</td></tr>'; return; }
   const exps = weeklyExpiries(4), cur = +$('#ocExp').value || exps[0];
@@ -300,7 +334,7 @@ function renderChain() {
     const K = atm + i * STRIKE_STEP;
     if (!spotDone && K > spot) { rows += `<tr class="spotrow"><td colspan="7"><div><span>Spot ${num(spot)}</span></div></td></tr>`; spotDone = true; }
     const c = price(`OPT:${exp}:${K}:CE`), p = price(`OPT:${exp}:${K}:PE`), dc = L.delta(spot, K, T, 'CE', volFor(K)), dp = L.delta(spot, K, T, 'PE', volFor(K));
-    const cell = (k, v) => `<td class="c ${(k.endsWith('CE') ? K < spot : K > spot) ? 'itm' : ''}" data-k="${k}">${num(v)}<div class="bs"><button class="b-btn" data-ob="BUY">B</button><button class="s-btn" data-ob="SELL">S</button></div></td>`;
+    const cell = (k, v) => `<td class="c ${(k.endsWith('CE') ? K < spot : K > spot) ? 'itm' : ''}" data-k="${k}">${num(v)}<div class="bs"><button class="b-btn" data-ob="BUY">B</button><button class="s-btn" data-ob="SELL">S</button><button class="x-btn" data-och title="See chart">📈</button></div></td>`;
     rows += `<tr class="${K === atm ? 'atm' : ''}"><td class="small ${K < spot ? 'itm' : ''}">${dc.toFixed(2)}</td><td class="small ${K < spot ? 'itm' : ''}">${i ? (i > 0 ? '+' : '') + i * STRIKE_STEP : 'ATM'}</td>${cell(`OPT:${exp}:${K}:CE`, c)}<td class="k">${K}</td>${cell(`OPT:${exp}:${K}:PE`, p)}<td class="small ${K > spot ? 'itm' : ''}">${i ? (i > 0 ? '+' : '') + i * STRIKE_STEP : 'ATM'}</td><td class="small ${K > spot ? 'itm' : ''}">${dp.toFixed(2)}</td></tr>`;
   }
   $('#oc').innerHTML = rows;
@@ -359,8 +393,7 @@ function render(dataTick) {
   renderTop(); renderWl(); renderChartHead();
   if ($('#p-chain').classList.contains('on')) renderChain();
   renderOrders(); renderPositions(); renderHoldings(); renderFunds();
-  if (dataTick && range === '1d' && chartData.length && !demo) { /* keep chart, ticks come from range reload */ }
-  if (demo && range === '1d') { const q = sel === 'NIFTY' ? Q['^NSEI'] : Q[sel]; if (q) { chartData = q.series; drawChart(); } }
+  if (dataTick && range === '1d' && !$('#replay').dataset.on && (demo || marketOpen())) loadChart(true); // live: chart keeps moving
 }
 
 /* ---------- order window ---------- */
@@ -400,6 +433,21 @@ function omCalc() {
   else if (p.t === 'OPT' && OW.side === 'SELL') w = 'Selling options carries large or unlimited risk. That\'s why margin is high.';
   else if (p.t === 'OPT' && OW.side === 'BUY') w = `Maximum loss: the premium, ${inr(px * qty)}.`;
   $('#omWarn').textContent = w;
+  $('#omExplain').innerHTML = qty > 0 && px > 0 ? '<b>In plain words:</b> ' + explain(p, OW.side, qty, px, OW.product) : '';
+}
+function explain(p, side, qty, px, product) {
+  const val = inr(qty * px), buy = side === 'BUY';
+  if (p.t === 'EQ') {
+    if (product === 'CNC') return buy ? `You buy <b>${qty} share${qty > 1 ? 's' : ''} of ${p.sym}</b> for about <b>${val}</b>. The money leaves your trading balance now, and the shares go to your <b>Holdings</b> (your demat). You can keep them for as long as you like.`
+      : `You sell <b>${qty} share${qty > 1 ? 's' : ''} of ${p.sym}</b> from your Holdings for about <b>${val}</b>. The money comes back to your trading balance.`;
+    return buy ? `<b>Intraday buy</b> of ${qty} ${p.sym} (worth ${val}) using only 20% of the money as margin. Profit if the price rises today. It shows in <b>Positions</b>, and you should close it before the market ends.`
+      : `<b>Intraday short sell</b>: you sell ${qty} ${p.sym} you don't own (worth ${val}), hoping to buy them back cheaper later today. You profit if the price <b>falls</b> and lose if it rises.`;
+  }
+  if (p.t === 'FUT') return buy ? `You agree to <b>buy Nifty</b> at ${num(px)} on ${fmtExp(p.exp)}. Each point Nifty rises earns you ₹${qty}. Each point it falls costs you ₹${qty}. You only deposit margin (~12%) now.`
+    : `You agree to <b>sell Nifty</b> at ${num(px)} on ${fmtExp(p.exp)}. You earn ₹${qty} for every point Nifty <b>falls</b>, and lose ₹${qty} for every point it rises.`;
+  const be = p.type === 'CE' ? p.K + px : p.K - px, dirn = p.type === 'CE' ? 'above' : 'below';
+  return buy ? `You pay <b>${val}</b> (₹${num(px)} × ${qty}) for the right to profit if Nifty ends <b>${dirn} ${num(be, 0)}</b> on ${fmtExp(p.exp)}. If it doesn't, you can lose the whole ${val}. That is also the most you can lose.`
+    : `You <b>receive ${val}</b> now, but you must pay the buyer if Nifty ends ${dirn} ${p.K} on ${fmtExp(p.exp)}. You keep the full ${val} only if it doesn't. Losses can be much bigger than what you received.`;
 }
 function closeOrder() { $('#ovl').classList.remove('on'); OW = null; }
 $('#omSide').onclick = () => setSide(OW.side === 'BUY' ? 'SELL' : 'BUY');
@@ -418,7 +466,8 @@ addEventListener('keydown', (e) => {
 });
 
 /* ---------- interactions ---------- */
-function selectSym(s) { sel = s; range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); tab('chart'); renderWl(); renderChartHead(); loadChart(); $('#wl').classList.remove('on'); }
+function selectInst(k) { selInst = k; sel = 'NIFTY'; tab('chart'); renderWl(); renderChartHead(); loadChart(); }
+function selectSym(s) { sel = s; selInst = null; range = '1d'; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c.dataset.r === '1d')); tab('chart'); renderWl(); renderChartHead(); loadChart(); $('#wl').classList.remove('on'); }
 function tab(t) { $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'chain') renderChain(); if (t === 'chart') setTimeout(drawChart, 0); }
 $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 $('#list').onclick = (e) => {
@@ -430,11 +479,11 @@ $('#list').onclick = (e) => {
   selectSym(s);
 };
 const futKey = () => 'FUT:' + monthlyExpiry();
-$('#cBuy').onclick = () => openOrder(sel === 'NIFTY' ? futKey() : 'EQ:' + sel, 'BUY');
-$('#cSell').onclick = () => openOrder(sel === 'NIFTY' ? futKey() : 'EQ:' + sel, 'SELL');
+$('#cBuy').onclick = () => openOrder(selInst || (sel === 'NIFTY' ? futKey() : 'EQ:' + sel), 'BUY');
+$('#cSell').onclick = () => openOrder(selInst || (sel === 'NIFTY' ? futKey() : 'EQ:' + sel), 'SELL');
 $('#ocFut').onclick = () => openOrder(futKey(), 'BUY');
 $('#ocExp').onchange = renderChain;
-$('#oc').onclick = (e) => { const td = e.target.closest('td.c'); if (!td) return; const b = e.target.closest('[data-ob]'); openOrder(td.dataset.k, b ? b.dataset.ob : 'BUY'); };
+$('#oc').onclick = (e) => { const td = e.target.closest('td.c'); if (!td) return; if (e.target.closest('[data-och]')) return selectInst(td.dataset.k); const b = e.target.closest('[data-ob]'); openOrder(td.dataset.k, b ? b.dataset.ob : 'BUY'); };
 $('#cRanges').onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; range = b.dataset.r; $$('#cRanges .chip').forEach((c) => c.classList.toggle('on', c === b)); loadChart(); };
 $('#ordersBox').onclick = (e) => { const b = e.target.closest('[data-cancel]'); if (b) cancel(+b.dataset.cancel); };
 $('#posBox').onclick = (e) => {
@@ -486,16 +535,6 @@ $('#q').onkeydown = (e) => {
 $('#sugg').onclick = (e) => { const d = e.target.closest('[data-add]'); if (d) addSym(d.dataset.add); };
 document.addEventListener('click', (e) => { if (!e.target.closest('.search')) $('#sugg').style.display = 'none'; });
 
-/* chart hover */
-$('#cWrap').onmousemove = (e) => {
-  if (chartData.length < 2) return;
-  const r = $('#cWrap').getBoundingClientRect(), i = Math.round((e.clientX - r.left) / r.width * (chartData.length - 1));
-  const v = chartData[Math.max(0, Math.min(chartData.length - 1, i))];
-  const tip = $('#cTip'); tip.style.display = 'block'; tip.textContent = num(v);
-  tip.style.left = Math.min(r.width - 90, e.clientX - r.left + 12) + 'px'; tip.style.top = '10px';
-};
-$('#cWrap').onmouseleave = () => ($('#cTip').style.display = 'none');
-addEventListener('resize', drawChart);
 
 /* ---------- boot ---------- */
 $$('[data-brand]').forEach((e) => (e.textContent = BRAND)); document.title = document.title.replace(/LEDGER/g, BRAND);
