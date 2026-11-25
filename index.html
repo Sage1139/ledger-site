@@ -107,7 +107,8 @@ L.$('#tiles').innerHTML = LV.map(([n,l,t,d,k]) => `<a class="glass tile reveal" 
 
 // words light up as you scroll
 const st = L.$('#stmt');
-st.innerHTML = st.innerHTML.split(' ').map(w => `<span>${w} </span>`).join('') + '<small>Source: SEBI study of individual traders in equity derivatives, FY2025-26 (August 2026).</small>';
+const uiLang = (() => { try { return JSON.parse(localStorage.getItem('ledger.ui') || '"en"'); } catch (e) { return 'en'; } })();
+st.innerHTML = (uiLang === 'en' ? st.innerHTML.split(' ').map(w => `<span>${w} </span>`).join('') : `<span>${st.innerHTML}</span>`) + '<small>Source: SEBI study of individual traders in equity derivatives, FY2025-26 (August 2026).</small>';
 const spans = L.$$('span', st);
 addEventListener('scroll', () => {
   const r = st.getBoundingClientRect(), p = Math.min(1, Math.max(0, (innerHeight * .8 - r.top) / (r.height + innerHeight * .3)));
