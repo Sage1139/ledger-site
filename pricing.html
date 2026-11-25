@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pricing — LEDGER</title>
+<meta name="description" content="LEDGER is free to learn. Pro is coming at a founding price of ₹49 a month, locked for life for early members." />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>
+.pr{max-width:1080px;margin:0 auto;padding:50px 5vw 90px}
+.pr h1{font-size:clamp(40px,6vw,72px);font-weight:900;letter-spacing:-.04em;line-height:1}
+.pr .lead{color:#c7c7cc;font-size:18px;max-width:640px;margin-top:18px;line-height:1.6}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:44px}
+.plan{padding:32px;display:flex;flex-direction:column;gap:18px}
+.plan.pro{border-color:rgba(0,227,140,.45);box-shadow:0 30px 80px -40px rgba(0,227,140,.45)}
+.plan h2{font-size:22px;font-weight:700}
+.tag{display:inline-block;font-size:11px;letter-spacing:.18em;color:var(--g1);border:1px solid rgba(0,227,140,.4);padding:4px 10px;border-radius:999px;margin-left:8px;vertical-align:middle}
+.price{font-size:52px;font-weight:900;letter-spacing:-.03em;line-height:1}
+.price small{font-size:16px;font-weight:500;color:var(--dim);letter-spacing:0}
+.alt{color:var(--dim);font-size:14px}
+.alt b{color:var(--fg)}
+.plan ul{list-style:none;display:grid;gap:11px;font-size:15px;color:#d4d4d9}
+.plan li{display:flex;gap:10px;line-height:1.45}
+.plan li::before{content:'✓';color:var(--g1);font-weight:700}
+.plan .cta{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.plan .cta .pill,.plan .cta .ghost{text-align:center}
+#joinMsg{font-size:14px;min-height:20px}
+.faq{margin-top:70px;max-width:760px}
+.faq h2{font-size:28px;font-weight:900;letter-spacing:-.02em;margin-bottom:18px}
+.faq details{border-top:1px solid var(--line);padding:16px 0}
+.faq summary{cursor:pointer;font-weight:600;font-size:16px}
+.faq p{color:#c7c7cc;margin-top:10px;line-height:1.65}
+@media(max-width:820px){.plans{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-root="/">
+<main class="pr">
+  <div class="kicker">Pricing</div>
+  <h1>Learning is free.<br/><span class="grad">Going deeper costs a chai a week.</span></h1>
+  <p class="lead">Every lesson, every simulator and your ₹10 lakh of virtual money stay free. Pro is for people who want to go further, and early members lock in a low founding price.</p>
+
+  <div class="plans">
+    <section class="glass plan">
+      <h2>Free</h2>
+      <div class="price">₹0 <small>forever</small></div>
+      <ul>
+        <li>All 23 lessons, from "what is a share" to options</li>
+        <li>Stock and SIP time machines on real market data</li>
+        <li>Live trading terminal with F&amp;O and ₹10 lakh virtual money</li>
+        <li>AURORA, the AI tutor, in 13 languages</li>
+        <li>Progress saved on every device</li>
+      </ul>
+      <div class="cta"><a class="ghost" href="/learn/">Start learning free</a></div>
+    </section>
+
+    <section class="glass plan pro">
+      <h2>Pro <span class="tag">FOUNDING PRICE</span></h2>
+      <div class="price">₹49 <small>/ month</small></div>
+      <div class="alt">or <b>₹399 a year</b> (about ₹33 a month). Founding members keep this price for as long as they stay subscribed.</div>
+      <ul>
+        <li>Everything in Free</li>
+        <li>Unlimited AURORA with full, step-by-step answers</li>
+        <li>Advanced F&amp;O and strategy lessons</li>
+        <li>Certificates you can share on LinkedIn</li>
+        <li>Weekly trading contests and leaderboard</li>
+        <li>Portfolio report card: risk, spread and mistakes</li>
+      </ul>
+      <div class="cta">
+        <button class="pill green" id="join">Join the founding list, free</button>
+        <div id="joinMsg" class="small" role="status"></div>
+        <div class="small">Pro is launching soon. Joining costs nothing; we'll email you before it opens, and you're only charged if you choose to subscribe then.</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="faq">
+    <h2>Questions</h2>
+    <details><summary>Will the free lessons stay free?</summary><p>Yes. The 23 lessons, the three simulators and AURORA stay free. Pro adds extra depth on top; it never takes away what's free today.</p></details>
+    <details><summary>Am I paying anything now?</summary><p>No. Pro isn't on sale yet, so there is no payment page. Joining the founding list only records that you're interested.</p></details>
+    <details><summary>Can I cancel Pro later?</summary><p>Yes, any time, from your account page. You keep Pro until the end of the period you paid for. See our <a class="up" href="/refund.html">refund and cancellation policy</a>.</p></details>
+    <details><summary>Is any real money traded?</summary><p>Never. LEDGER uses virtual money only. The Pro fee pays for the learning service, not for trades, tips or advice.</p></details>
+    <details><summary>Will Pro give stock tips?</summary><p>No. LEDGER is an educator, not an adviser. No plan includes buy or sell recommendations. For personal advice, talk to a SEBI-registered investment adviser.</p></details>
+  </section>
+</main>
+<script src="/assets/app.js"></script>
+<script>
+L.chrome('');
+const $ = L.$;
+const msg = (t, ok = true) => { $('#joinMsg').textContent = t; $('#joinMsg').style.color = ok ? 'var(--g1)' : 'var(--red)'; };
+async function join() {
+  if (!window.LAuth || !LAuth.ready) return msg('One moment…');
+  if (!LAuth.configured) return msg('Sign-in is not available right now. Please try again later.', false);
+  if (!LAuth.user) { location.href = '/account/login.html?mode=up&next=' + encodeURIComponent('/pricing?join=1'); return; }
+  $('#join').disabled = true; msg('Saving…');
+  const { error } = await LAuth.client.from('user_state').upsert({ user_id: LAuth.user.id, key: 'pro_waitlist', value: { v: { plan: 'founding', joined: new Date().toISOString() } }, updated_at: new Date().toISOString() });
+  if (error) { $('#join').disabled = false; return msg('Could not save. Please try again.', false); }
+  $('#join').textContent = "You're on the founding list ✓"; msg("Done. We'll email " + (LAuth.user.email || 'you') + ' before Pro opens.');
+}
+$('#join').onclick = join;
+const wait = setInterval(async () => {
+  if (!window.LAuth || !LAuth.ready) return; clearInterval(wait);
+  if (!LAuth.configured || !LAuth.user) return;
+  const { data } = await LAuth.client.from('user_state').select('key').eq('key', 'pro_waitlist').maybeSingle();
+  if (data) { $('#join').textContent = "You're on the founding list ✓"; $('#join').disabled = true; }
+  else if (new URLSearchParams(location.search).get('join') === '1') join();
+}, 150);
+L.motion();
+</script>
+</body>
+</html>

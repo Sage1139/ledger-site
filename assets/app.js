@@ -60,7 +60,7 @@ const L = (() => {
     loadAI();
     const f = document.createElement('footer');
     f.className = 'foot-main';
-    f.innerHTML = `<div style="margin-bottom:10px"><a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a>${CONTACT_EMAIL ? ` · <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>` : ''}</div>${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
+    f.innerHTML = `<div style="margin-bottom:10px"><a href="/about.html">About</a> · <a href="/pricing">Pricing</a> · <a href="/contact.html">Contact</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="/refund.html">Refunds</a> · <a href="/shipping.html">Delivery</a>${CONTACT_EMAIL ? ` · <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>` : ''}</div>${BRAND} is a free educational platform. No real money is traded and nothing here is investment advice.<br>Market data from Yahoo Finance, delayed about 15 minutes. Option prices in the simulator are model-calculated, not live exchange quotes.`;
     document.body.append(f);
     document.title = document.title.replace(/LEDGER/g, BRAND);
     $$('[data-brand]').forEach((e) => (e.textContent = BRAND));

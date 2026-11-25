@@ -6,6 +6,11 @@
   <url><loc>https://ledger-site-tau.vercel.app/simulator/funds</loc><lastmod>2026-11-24</lastmod><priority>0.8</priority></url>
   <url><loc>https://ledger-site-tau.vercel.app/simulator/trade</loc><lastmod>2026-11-24</lastmod><priority>0.8</priority></url>
   <url><loc>https://ledger-site-tau.vercel.app/learn/</loc><lastmod>2026-11-24</lastmod><priority>0.7</priority></url>
+  <url><loc>https://ledger-site-tau.vercel.app/pricing</loc><lastmod>2026-11-26</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ledger-site-tau.vercel.app/about</loc><lastmod>2026-11-26</lastmod><priority>0.6</priority></url>
+  <url><loc>https://ledger-site-tau.vercel.app/contact</loc><lastmod>2026-11-26</lastmod><priority>0.5</priority></url>
+  <url><loc>https://ledger-site-tau.vercel.app/refund</loc><lastmod>2026-11-26</lastmod><priority>0.3</priority></url>
+  <url><loc>https://ledger-site-tau.vercel.app/shipping</loc><lastmod>2026-11-26</lastmod><priority>0.3</priority></url>
   <url><loc>https://ledger-site-tau.vercel.app/privacy</loc><lastmod>2026-11-24</lastmod><priority>0.3</priority></url>
   <url><loc>https://ledger-site-tau.vercel.app/terms</loc><lastmod>2026-11-24</lastmod><priority>0.3</priority></url>
 </urlset>

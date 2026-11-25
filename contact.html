@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Contact us — LEDGER</title>
+<meta name="description" content="How to reach LEDGER for help, feedback, account or payment questions." />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/style.css" />
+<style>.doc{max-width:760px;margin:0 auto;padding:50px 5vw 80px}.doc h1{font-size:44px;font-weight:900;letter-spacing:-.03em}.doc h2{font-size:22px;margin:34px 0 10px}.doc p,.doc li{color:#c7c7cc;font-size:16px;line-height:1.7}.doc ul{margin-left:20px}</style>
+</head>
+<body data-root="/">
+<article class="doc">
+  <div class="kicker">Contact</div>
+  <h1>Contact us</h1>
+  <p class="small">Last updated: 26 November 2026</p>
+  <p>We're a small team and we read every message. The fastest way to reach us is email.</p>
+  <h2>Email</h2>
+  <p><span data-email>our support email</span></p>
+  <p>We reply within 2 working days (Monday to Saturday, 10 am to 6 pm IST).</p>
+  <h2>What to include</h2>
+  <ul>
+    <li>The email address you signed in with</li>
+    <li>The page or lesson where the problem happened</li>
+    <li>For a payment question: the date, amount and payment ID from your receipt</li>
+  </ul>
+  <h2>Please never send</h2>
+  <p>Passwords, OTPs, card numbers, bank details, PAN or Aadhaar. We will never ask for them.</p>
+  <h2>Deleting your account</h2>
+  <p>You can delete your saved progress from your <a class="up" href="/account/">account page</a>. To delete your whole account, email us from the address you signed in with and we'll remove it within 7 days.</p>
+</article>
+<script src="/assets/app.js"></script>
+<script>L.chrome(''); L.$$('[data-email]').forEach((e) => { if (CONTACT_EMAIL) e.innerHTML = `<a class="up" href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>`; });</script>
+</body>
+</html>
