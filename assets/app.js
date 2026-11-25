@@ -9,6 +9,11 @@ if (GATED) { let has = false; try { has = Object.keys(localStorage).some((k) => 
   if (!has) { document.documentElement.classList.add('gate'); setTimeout(() => document.documentElement.classList.remove('gate'), 8000); } }
 
 
+// Site language (Tamil, Malayalam, Hindi, Telugu): hide the page for a moment while it switches, then load the translator.
+(() => { let ui = 'en'; try { ui = JSON.parse(localStorage.getItem('ledger.ui') || '"en"'); } catch (e) {}
+  if (ui && ui !== 'en') document.documentElement.classList.add('tr-wait');
+  const s = document.createElement('script'); s.src = '/assets/i18n.js'; document.head.append(s); })();
+
 // Vercel Web Analytics: counts page views and where visitors come from. No cookies, no personal data.
 window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 (() => { const s = document.createElement('script'); s.defer = true; s.src = '/_vercel/insights/script.js'; document.head.append(s); })();
