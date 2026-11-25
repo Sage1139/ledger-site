@@ -69,13 +69,14 @@
 
   const EXCL = 'script,style,noscript,code,pre,textarea,[data-notr],.ai-body,.ai-hd select,.nav .logo,[contenteditable="true"]';
   const NUM = /[-+−]?₹?\d[\d,]*(?:\.\d+)?%?/g;
+  const NUMTAG = new RegExp('(<\\/?\\d+\\/?>)|' + NUM.source, 'g');
   const LETTERS = /[A-Za-z]{2,}/;
   const KEEPONLY = /^[A-Z0-9₹%&.,:;!?()/\-+−·•→←↑↓✓✕×' ]+$/; // all-caps tickers, codes, symbols: leave as is
   function template(text) {
     const s = text.replace(/\s+/g, ' ').trim();
     if (!s || !LETTERS.test(s) || s.length > 700) return null;
     if (KEEPONLY.test(s) && (s.match(/[A-Z]{2,}/g) || []).length < 3) return null; // tickers and short codes stay; longer CAPS labels are translated
-    const nums = []; const key = s.replace(NUM, (m) => `{${nums.push(m) - 1}}`);
+    const nums = []; const key = s.replace(NUMTAG, (m, tag) => (tag ? tag : `{${nums.push(m) - 1}}`)); // numbers out, formatting tags kept
     return { key, nums };
   }
   const fill = (t, nums) => t.replace(/\{(\d+)\}/g, (m, i) => (nums[i] !== undefined ? nums[i] : m));
@@ -103,12 +104,48 @@
       want(t.key, (tr) => { if (el.getAttribute(a) !== v) return; const out = fill(tr, t.nums); seen[a] = out; attrDone.set(el, seen); el.setAttribute(a, out); });
     }
   }
+  /* A sentence with bold/coloured words inside (<b>, <span>, <a>...) is translated as ONE unit, written like
+     "Master the <0>market.</0>", so the word order stays natural; the original inline elements are reused. */
+  const INLINE = new Set(['B', 'STRONG', 'I', 'EM', 'SPAN', 'A', 'SMALL', 'U', 'MARK', 'SUB', 'SUP', 'ABBR']);
+  const simple = (el) => el.tagName === 'BR' || (INLINE.has(el.tagName) && !el.children.length && !el.matches(EXCL));
+  function isUnit(el) {
+    if (!el.children.length || el.matches(EXCL)) return false;
+    let text = false;
+    for (const c of el.childNodes) {
+      if (c.nodeType === 3) { if (c.nodeValue.trim()) text = true; if (/[<>]/.test(c.nodeValue)) return false; }
+      else if (c.nodeType === 1) { if (!simple(c) || /[<>]/.test(c.textContent)) return false; }
+    }
+    return text;
+  }
+  const unitOf = (el) => (!el ? null : isUnit(el) ? el : el.parentElement && simple(el) && isUnit(el.parentElement) ? el.parentElement : null);
+  function serial(el) { let k = 0; return [...el.childNodes].map((c) => (c.nodeType === 3 ? c.nodeValue : c.nodeType === 1 ? (c.tagName === 'BR' ? `<${k++}/>` : `<${k}>${c.textContent}</${k++}>`) : '')).join(''); }
+  const unitDone = new WeakMap();
+  function doUnit(el) {
+    const v = serial(el); if (unitDone.get(el) === v) return;
+    if (el.closest(EXCL)) return;
+    const t = template(v); if (!t) return;
+    const els = [...el.children];
+    want(t.key, (tr) => {
+      if (serial(el) !== v) return;
+      const out = fill(tr, t.nums), nodes = [], used = new Set(); let last = 0, m; const re = /<(\d+)>([\s\S]*?)<\/\1>|<(\d+)\/>/g;
+      while ((m = re.exec(out))) { if (m.index > last) nodes.push(document.createTextNode(out.slice(last, m.index))); const e = els[+(m[1] || m[3])]; if (!e || used.has(e)) return; used.add(e); if (m[1]) e.textContent = m[2]; nodes.push(e); last = re.lastIndex; }
+      if (used.size !== els.length || /<\/?\d+\/?>/.test(out.slice(last))) return; // tags didn't come back cleanly: keep the English
+      if (last < out.length) nodes.push(document.createTextNode(out.slice(last)));
+      const lead = v.match(/^\s*/)[0], trail = v.match(/\s*$/)[0];
+      if (nodes[0] && nodes[0].nodeType === 3) nodes[0].nodeValue = lead + nodes[0].nodeValue.trimStart(); else if (lead) nodes.unshift(document.createTextNode(lead));
+      const z = nodes[nodes.length - 1]; if (z && z.nodeType === 3) z.nodeValue = z.nodeValue.trimEnd() + trail; else if (trail) nodes.push(document.createTextNode(trail));
+      el.replaceChildren(...nodes); unitDone.set(el, serial(el));
+    });
+  }
+
   function scan(n) {
-    if (n.nodeType === 3) return doText(n);
+    if (n.nodeType === 3) { const u = unitOf(n.parentElement); return u ? doUnit(u) : doText(n); }
     if (n.nodeType !== 1) return;
     if (n.matches(EXCL)) return;
+    const u = unitOf(n); if (u) { doUnit(u); if (u !== n) return; }
     if (n.hasAttributes()) doAttrs(n);
-    const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode: (x) => (x.nodeType === 1 && x.matches(EXCL) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    if (u) { [...n.children].forEach((c) => c.hasAttributes() && doAttrs(c)); return; }
+    const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode: (x) => (x.nodeType === 1 && x.matches(EXCL) ? NodeFilter.FILTER_REJECT : x.nodeType === 1 && isUnit(x) ? (doUnit(x), x.hasAttributes() && doAttrs(x), NodeFilter.FILTER_REJECT) : NodeFilter.FILTER_ACCEPT) });
     let x; while ((x = w.nextNode())) { if (x.nodeType === 3) doText(x); else if (x.hasAttributes()) doAttrs(x); }
   }
 
