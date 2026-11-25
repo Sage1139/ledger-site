@@ -120,12 +120,14 @@
     const keys = [...waiting.keys()].filter((k) => !inflight.has(k));
     if (!keys.length) { if (!active) reveal(); return; }
     const batches = []; let cur = [], size = 2;
-    for (const k of keys) { const add = JSON.stringify(k).length + 1; if (cur.length && (cur.length >= 40 || size + add > 3500)) { batches.push(cur); cur = []; size = 2; } cur.push(k); size += add; }
+    for (const k of keys) { const add = JSON.stringify(k).length + 1; if (cur.length && (cur.length >= 20 || size + add > 2200)) { batches.push(cur); cur = []; size = 2; } cur.push(k); size += add; }
     if (cur.length) batches.push(cur);
-    batches.forEach(send);
+    batches.forEach((b) => { b.forEach((k) => inflight.add(k)); todo.push(b); }); pump();
   }
+  const todo = []; // at most 3 requests at a time, so the free AI tier isn't flooded
+  function pump() { while (active < 3 && todo.length) send(todo.shift()); }
   async function send(batch, tries = 0) {
-    batch.forEach((k) => inflight.add(k)); active++;
+    active++;
     try {
       const r = await fetch(`/api/tr?l=${lang}&q=${b64(JSON.stringify(batch))}`);
       if (!r.ok) throw new Error(r.status);
@@ -133,10 +135,10 @@
       batch.forEach((k, i) => { dict[k] = t[i]; (waiting.get(k) || []).forEach((fn) => { try { fn(t[i]); } catch (e) {} }); waiting.delete(k); });
       save();
     } catch (e) {
-      if (tries < 2) { active--; batch.forEach((k) => inflight.delete(k)); return setTimeout(() => send(batch, tries + 1), 2500 * (tries + 1)); }
+      if (tries < 2) { active--; pump(); return setTimeout(() => send(batch, tries + 1), 3000 * (tries + 1)); }
       batch.forEach((k) => waiting.delete(k)); // give up quietly: the English stays
     }
-    batch.forEach((k) => inflight.delete(k)); active--;
+    batch.forEach((k) => inflight.delete(k)); active--; pump();
     if (!active && !waiting.size) reveal();
   }
 
