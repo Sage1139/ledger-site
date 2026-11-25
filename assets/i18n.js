@@ -172,7 +172,7 @@
       batch.forEach((k, i) => { dict[k] = t[i]; (waiting.get(k) || []).forEach((fn) => { try { fn(t[i]); } catch (e) {} }); waiting.delete(k); });
       save();
     } catch (e) {
-      if (tries < 2) { active--; pump(); return setTimeout(() => send(batch, tries + 1), 3000 * (tries + 1)); }
+      if (tries < 4) { active--; pump(); return setTimeout(() => send(batch, tries + 1), [4000, 8000, 15000, 25000][tries]); } // the free AI tier is sometimes busy for a minute
       batch.forEach((k) => waiting.delete(k)); // give up quietly: the English stays
     }
     batch.forEach((k) => inflight.delete(k)); active--; pump();
