@@ -1,7 +1,7 @@
 /* ===== LEDGER accounts: sign-in (Supabase) + syncing progress across devices =====
    Works without an account too: everything is kept in this browser until you sign in. */
 (() => {
-  const SYNC_KEYS = ['ledger.done2', 'ledger.sim.v1', 'ledger.lang', 'ledger.level'];
+  const SYNC_KEYS = ['ledger.done2', 'ledger.sim.v1', 'ledger.lang', 'ledger.level', 'ledger.ui'];
   const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
   const listeners = []; let client = null, user = null, ready = false, configured = false;
   const meta = () => L.store.get('ledger.sync.meta', {}); // key -> last local change time
