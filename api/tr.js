@@ -31,7 +31,7 @@ function decode(q) {
 }
 
 async function gemini(key, system, input) {
-  const models = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
+  const models = ['gemini-flash-lite-latest', 'gemini-flash-latest'];
   let last;
   for (const model of models) {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 25000);
