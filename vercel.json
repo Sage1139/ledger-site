@@ -2,7 +2,8 @@
   "cleanUrls": true,
   "crons": [{ "path": "/api/keepalive", "schedule": "17 3 * * *" }],
   "functions": {
-    "api/ask.js": { "maxDuration": 60 }
+    "api/ask.js": { "maxDuration": 60 },
+    "api/tr.js": { "maxDuration": 60 }
   },
   "headers": [
     {
