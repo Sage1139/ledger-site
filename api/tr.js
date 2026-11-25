@@ -14,6 +14,8 @@ Rules:
 - Keep every placeholder like {0}, {1} exactly as it is, in a position that reads naturally.
 - Keep numbers, ₹ amounts, %, symbols (→ · ✓ ✕ ↑ ↓ + −), emoji and leading/trailing punctuation.
 - Keep any word that is entirely in CAPITAL letters (like BUY, SELL, NIFTY, TCS) unchanged.
+- Address the reader politely and consistently with the respectful "you" (Tamil நீங்கள், Hindi आप, Malayalam നിങ്ങൾ, Telugu మీరు). Describe actions neutrally, never as "I did".
+- Translate the meaning exactly; never add or drop words like "maybe", "always" or "never".
 - Never add explanations, notes, quotes or extra words. Never give investment advice.`;
 
 const hits = new Map(); // gentle per-instance limit: 120 requests / minute / IP
@@ -29,7 +31,7 @@ function decode(q) {
 }
 
 async function gemini(key, system, input) {
-  const models = ['gemini-flash-lite-latest', 'gemini-flash-latest'];
+  const models = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
   let last;
   for (const model of models) {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 25000);
