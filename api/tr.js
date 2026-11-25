@@ -12,6 +12,7 @@ Rules:
 - Return ONLY a JSON array of strings, the same length and order as the input.
 - Keep these words in English letters exactly as written: ${KEEP}. Keep stock and fund names, ticker symbols, brand names, people's names, URLs and email addresses unchanged.
 - Keep every placeholder like {0}, {1} exactly as it is, in a position that reads naturally.
+- Some strings mark bold or coloured words with numbered tags like <0>word</0>, and line breaks like <1/>. Keep every tag exactly once, wrapped around the translation of the same words, moved to wherever those words naturally go in the sentence.
 - Keep numbers, ₹ amounts, %, symbols (→ · ✓ ✕ ↑ ↓ + −), emoji and leading/trailing punctuation.
 - Keep any word that is entirely in CAPITAL letters (like BUY, SELL, NIFTY, TCS) unchanged.
 - Address the reader politely and consistently with the respectful "you" (Tamil நீங்கள், Hindi आप, Malayalam നിങ്ങൾ, Telugu మీరు). Describe actions neutrally, never as "I did".
@@ -64,7 +65,8 @@ async function groq(key, system, input) {
 }
 
 const ok = (input, out) => Array.isArray(out) && out.length === input.length && out.every((s, i) => typeof s === 'string' && s.trim() &&
-  ((input[i].match(/\{\d+\}/g) || []).sort().join() === (s.match(/\{\d+\}/g) || []).sort().join()));
+  ((input[i].match(/\{\d+\}/g) || []).sort().join() === (s.match(/\{\d+\}/g) || []).sort().join()) &&
+  ((input[i].match(/<\/?\d+\/?>/g) || []).sort().join() === (s.match(/<\/?\d+\/?>/g) || []).sort().join()));
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
