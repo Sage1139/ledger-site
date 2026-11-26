@@ -66,6 +66,8 @@
   const KEY = 'ledger.tr.' + lang;
   let dict = {}; try { dict = JSON.parse(ls.get(KEY) || '{}'); } catch (e) {}
   let saveT; const save = () => { clearTimeout(saveT); saveT = setTimeout(() => ls.set(KEY, JSON.stringify(dict)), 800); };
+  // the reviewed translations saved on the server (instant); anything missing is translated live
+  const ready = fetch('/api/dict?l=' + lang).then((r) => (r.ok ? r.json() : {})).then((d) => { Object.assign(dict, d); save(); }).catch(() => {});
 
   const EXCL = 'script,style,noscript,code,pre,textarea,[data-notr],.ai-body,.ai-hd select,.nav .logo,[contenteditable="true"]';
   const NUM = /[-+−]?₹?\d[\d,]*(?:\.\d+)?%?/g;
@@ -179,10 +181,8 @@
     if (!active && !waiting.size) reveal();
   }
 
-  // translate the page title too
-  const title = template(document.title); if (title) want(title.key, (tr) => { document.title = fill(tr, title.nums); });
-
   function start() {
+    const title = template(document.title); if (title) want(title.key, (tr) => { document.title = fill(tr, title.nums); }); // the tab title too
     scan(document.body);
     if (!waiting.size) reveal(); else queue();
     // small note in the footer: AI translation + one tap back to English
@@ -200,5 +200,6 @@
       if (!raf) raf = setTimeout(() => { raf = 0; const list = pend; pend = new Set(); list.forEach((n) => { if (n.isConnected) scan(n); }); }, 30);
     }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
   }
-  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  const go = () => Promise.race([ready, new Promise((r) => setTimeout(r, 1500))]).then(start);
+  if (document.body) go(); else document.addEventListener('DOMContentLoaded', go);
 })();
