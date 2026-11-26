@@ -181,6 +181,7 @@
     if (!active && !waiting.size) reveal();
   }
 
+  window.LedgerI18n.pending = () => waiting.size + active; // how much is still being translated (used by the warm-up check)
   function start() {
     const title = template(document.title); if (title) want(title.key, (tr) => { document.title = fill(tr, title.nums); }); // the tab title too
     scan(document.body);
