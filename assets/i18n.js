@@ -61,7 +61,19 @@
   const f = document.createElement('link'); f.rel = 'stylesheet';
   f.href = `https://fonts.googleapis.com/css2?family=${FONTS[lang].replace(/ /g, '+')}:wght@400;500;700;900&display=swap`; document.head.append(f);
   const reveal = () => root.classList.remove('tr-wait');
-  setTimeout(reveal, 2500); // never keep the page hidden for long
+  setTimeout(reveal, 1500); // never keep the page hidden for long
+  // small pill while text is still being translated, so a page that is still in English never looks broken
+  const WAIT = { ta: ['மொழிபெயர்க்கிறது…', 'மொழிபெயர்ப்பு சற்று தாமதமாகிறது. சிறிது நேரத்தில் தானாக மாறும்.'], hi: ['अनुवाद हो रहा है…', 'अनुवाद में थोड़ी देर हो रही है। कुछ देर में अपने आप बदल जाएगा।'],
+    ml: ['വിവർത്തനം ചെയ്യുന്നു…', 'വിവർത്തനത്തിന് അൽപ്പം വൈകുന്നു. കുറച്ച് കഴിഞ്ഞ് സ്വയം മാറും.'], te: ['అనువదిస్తోంది…', 'అనువాదం కొంచెం ఆలస్యం అవుతోంది. కాసేపట్లో దానంతట అదే మారుతుంది.'] };
+  let pill, pillT;
+  function status(mode) { // mode: 0 = translating, 1 = busy, null = done
+    clearTimeout(pillT);
+    if (mode == null) { if (pill) { pill.style.opacity = '0'; pillT = setTimeout(() => { if (pill) pill.style.display = 'none'; }, 300); } return; }
+    if (!pill) { pill = document.createElement('div'); pill.setAttribute('data-notr', ''); pill.setAttribute('role', 'status');
+      pill.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;max-width:calc(100vw - 32px);padding:9px 16px;border-radius:999px;background:rgba(15,15,18,.92);border:1px solid rgba(255,255,255,.14);color:#e8e8ec;font-size:13px;line-height:1.4;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:opacity .3s;pointer-events:none';
+      document.body.append(pill); }
+    pill.textContent = WAIT[lang][mode]; pill.style.display = 'block'; pill.style.opacity = '1';
+  }
 
   const KEY = 'ledger.tr.' + lang;
   let dict = {}; try { dict = JSON.parse(ls.get(KEY) || '{}'); } catch (e) {}
@@ -152,7 +164,7 @@
   }
 
   // ask the server for everything still missing, in small batches
-  let qT, active = 0; const inflight = new Set();
+  let qT, active = 0, busy = false; const inflight = new Set();
   function queue() { clearTimeout(qT); qT = setTimeout(flush, 60); }
   const b64 = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   function flush() {
@@ -169,23 +181,26 @@
     active++;
     try {
       const r = await fetch(`/api/tr?l=${lang}&q=${b64(JSON.stringify(batch))}`);
+      if (r.ok && busy) { busy = false; status(0); }
       if (!r.ok) throw new Error(r.status);
       const { t } = await r.json();
       batch.forEach((k, i) => { dict[k] = t[i]; (waiting.get(k) || []).forEach((fn) => { try { fn(t[i]); } catch (e) {} }); waiting.delete(k); });
       save();
     } catch (e) {
-      if (tries < 4) { active--; pump(); return setTimeout(() => send(batch, tries + 1), [4000, 8000, 15000, 25000][tries]); } // the free AI tier is sometimes busy for a minute
+      const WAITS = [4000, 8000, 15000, 25000, 30000, 45000, 60000, 60000]; // the free AI tier is sometimes busy for a few minutes
+      if (tries >= 1 && !busy) { busy = true; status(1); }
+      if (tries < WAITS.length) { active--; pump(); return setTimeout(() => send(batch, tries + 1), WAITS[tries]); }
       batch.forEach((k) => waiting.delete(k)); // give up quietly: the English stays
     }
     batch.forEach((k) => inflight.delete(k)); active--; pump();
-    if (!active && !waiting.size) reveal();
+    if (!active && !waiting.size) { reveal(); status(null); }
   }
 
   window.LedgerI18n.pending = () => waiting.size + active; // how much is still being translated (used by the warm-up check)
   function start() {
     const title = template(document.title); if (title) want(title.key, (tr) => { document.title = fill(tr, title.nums); }); // the tab title too
     scan(document.body);
-    if (!waiting.size) reveal(); else queue();
+    if (!waiting.size) reveal(); else { queue(); setTimeout(() => { if (waiting.size) status(busy ? 1 : 0); }, 1200); }
     // small note in the footer: AI translation + one tap back to English
     const addNote = () => { const fm = document.querySelector('.foot-main'); if (!fm || fm.querySelector('.i18n-note')) return !!fm;
       const d = document.createElement('div'); d.className = 'i18n-note'; d.setAttribute('data-notr', '');
