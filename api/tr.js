@@ -31,35 +31,34 @@ function decode(q) {
   return JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
 }
 
-async function gemini(key, system, input) {
-  const models = ['gemini-flash-lite-latest', 'gemini-flash-latest'];
-  let last;
-  for (const model of models) {
-    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 25000);
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 8000, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } }),
-      });
-      clearTimeout(t);
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) { last = new Error(model + ': ' + ((j.error && j.error.message) || r.status)); continue; }
-      const text = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || '').join('');
-      return JSON.parse(text);
-    } catch (e) { clearTimeout(t); last = e; }
-  }
-  throw last || new Error('gemini failed');
+// Each free model has its own daily quota, so trying several gives far more free capacity.
+const GEMINI = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
+const GROQ = [process.env.GROQ_MODEL || 'openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'llama-3.3-70b-versatile', 'moonshotai/kimi-k2-instruct', 'openai/gpt-oss-20b'];
+
+async function timed(url, opts, ms) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { ...opts, signal: ctl.signal }); const j = await r.json().catch(() => ({})); return { r, j }; } finally { clearTimeout(t); }
 }
 
-async function groq(key, system, input) {
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+async function gemini(key, model, system, input, ms) {
+  const cfg = { temperature: 0, maxOutputTokens: 8000, responseMimeType: 'application/json' };
+  if (!/2\.0/.test(model)) cfg.thinkingConfig = { thinkingBudget: 0 };
+  const { r, j } = await timed(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }], generationConfig: cfg }),
+  }, ms);
+  if (!r.ok) throw new Error(r.status + ' ' + ((j.error && j.error.message) || '').slice(0, 80));
+  const text = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).map((p) => p.text || '').join('');
+  const o = JSON.parse(text); return Array.isArray(o) ? o : o.t;
+}
+
+async function groq(key, model, system, input, ms) {
+  const { r, j } = await timed('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-    body: JSON.stringify({ model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b', temperature: 0, max_tokens: 8000, response_format: { type: 'json_object' },
+    body: JSON.stringify({ model, temperature: 0, max_tokens: 8000, response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: system + '\nWrap the array as {"t": [...]}.' }, { role: 'user', content: JSON.stringify(input) }] }),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error((j.error && j.error.message) || 'groq ' + r.status);
+  }, ms);
+  if (!r.ok) throw new Error(r.status + ' ' + ((j.error && j.error.message) || '').slice(0, 80));
   const o = JSON.parse(j.choices[0].message.content);
   return Array.isArray(o) ? o : o.t;
 }
@@ -79,12 +78,19 @@ export default async function handler(req, res) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0] || 'x';
   if (limited(ip)) return res.status(429).json({ error: 'slow down' });
   const { GEMINI_API_KEY: gk, GROQ_API_KEY: qk } = process.env;
-  const system = SYSTEM(lang);
+  const system = SYSTEM(lang), t0 = Date.now(), why = [];
+  const steps = [];
+  if (gk) steps.push(['g:' + GEMINI[0], (ms) => gemini(gk, GEMINI[0], system, input, ms)]);
+  if (qk) steps.push(['q:' + GROQ[0], (ms) => groq(qk, GROQ[0], system, input, ms)]);
+  if (gk) GEMINI.slice(1).forEach((m) => steps.push(['g:' + m, (ms) => gemini(gk, m, system, input, ms)]));
+  if (qk) GROQ.slice(1).forEach((m) => steps.push(['q:' + m, (ms) => groq(qk, m, system, input, ms)]));
   let out;
-  for (const step of [gk && (() => gemini(gk, system, input)), qk && (() => groq(qk, system, input)), gk && (() => gemini(gk, system, input))].filter(Boolean)) {
-    try { out = await step(); if (ok(input, out)) break; out = null; } catch (e) { out = null; }
+  for (const [name, step] of steps) {
+    const left = 52000 - (Date.now() - t0); if (left < 4000) break; // stay inside Vercel's 60 s limit
+    try { out = await step(Math.min(22000, left)); if (ok(input, out)) break; why.push(name + ' bad output'); out = null; }
+    catch (e) { why.push(name + ' ' + String((e && e.message) || e).slice(0, 60)); out = null; }
   }
-  if (!out) { res.setHeader('Cache-Control', 'no-store'); return res.status(503).json({ error: 'busy' }); }
+  if (!out) { res.setHeader('Cache-Control', 'no-store'); console.log('tr busy', lang, why.join(' | ')); return res.status(503).json({ error: 'busy', why: why.map((w) => w.split(' ').slice(0, 2).join(' ')) }); }
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=31536000');
   return res.status(200).json({ t: out.map((s) => s.trim()) });
 }
